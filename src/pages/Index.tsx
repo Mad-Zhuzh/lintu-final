@@ -168,15 +168,15 @@ const Index = () => {
       </header>
 
       {/* ===== HERO ===== */}
-      <section className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-4 overflow-hidden">
-        <img
-          src={droneHero}
-          alt="Дрон в полёте"
-          width={1920}
-          height={1080}
-          className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
-        />
-        <div className="relative container mx-auto text-center max-w-3xl">
+      <section className="pt-28 pb-20 md:pt-36 md:pb-32 px-4 overflow-hidden">
+        <div className="container mx-auto text-center max-w-3xl">
+          <img
+            src={droneHero}
+            alt="Дрон в полёте"
+            width={400}
+            height={300}
+            className="mx-auto mb-8 w-48 md:w-72 object-contain select-none drop-shadow-xl"
+          />
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-6">
             Доставка дронами —{" "}
             <span className="text-primary">быстро</span> и{" "}
@@ -186,7 +186,7 @@ const Index = () => {
             Lintu — современный сервис доставки грузов с помощью автономных дронов.
             Забудьте о пробках и долгом ожидании.
           </p>
-          <Button size="lg" className="text-base px-8 py-6 rounded-full shadow-lg" onClick={() => scrollTo("#contact")}>
+          <Button size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
             Заказать доставку
           </Button>
         </div>
@@ -360,7 +360,7 @@ const Index = () => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
-            <Button type="submit" size="lg" className="w-full rounded-full">
+            <Button type="submit" size="lg" className="w-full">
               <Send className="mr-2 h-4 w-4" />
               Отправить заявку
             </Button>
