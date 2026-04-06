@@ -17,8 +17,11 @@ import {
   Send,
   Menu,
   X,
+  Search,
+  Plane,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import droneHero from "@/assets/drone-hero.jpg";
 
 const navLinks = [
   { label: "Преимущества", href: "#advantages" },
@@ -93,6 +96,8 @@ const Index = () => {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [trackingResult, setTrackingResult] = useState<null | { status: string; time: string }>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,8 +168,15 @@ const Index = () => {
       </header>
 
       {/* ===== HERO ===== */}
-      <section className="pt-32 pb-20 md:pt-44 md:pb-32 px-4">
-        <div className="container mx-auto text-center max-w-3xl">
+      <section className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-4 overflow-hidden">
+        <img
+          src={droneHero}
+          alt="Дрон в полёте"
+          width={1920}
+          height={1080}
+          className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
+        />
+        <div className="relative container mx-auto text-center max-w-3xl">
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-6">
             Доставка дронами —{" "}
             <span className="text-primary">быстро</span> и{" "}
@@ -257,6 +269,54 @@ const Index = () => {
               </Card>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ===== TRACKING ===== */}
+      <section id="tracking" className="py-20 px-4">
+        <div className="container mx-auto max-w-lg">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Отследить заказ</h2>
+          <p className="text-center text-muted-foreground mb-10">
+            Введите номер заказа, чтобы узнать его статус
+          </p>
+          <div className="flex gap-3">
+            <Input
+              placeholder="Например, LNT-20260401"
+              value={trackingNumber}
+              onChange={(e) => {
+                setTrackingNumber(e.target.value);
+                setTrackingResult(null);
+              }}
+            />
+            <Button
+              onClick={() => {
+                if (trackingNumber.trim()) {
+                  setTrackingResult({ status: "В полёте", time: "15 минут" });
+                }
+              }}
+              className="shrink-0"
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Отследить
+            </Button>
+          </div>
+          {trackingResult && (
+            <Card className="mt-6 border-none shadow-md bg-card">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Plane className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Статус: <span className="text-primary">{trackingResult.status}</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Ожидаемое время доставки — {trackingResult.time}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 
