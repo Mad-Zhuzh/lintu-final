@@ -182,7 +182,7 @@ const Index = () => {
             <span className="text-primary">быстро</span> и{" "}
             <span className="text-accent">удобно</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto">
             Lintu — современный сервис доставки грузов с помощью автономных дронов.
             Забудьте о пробках и долгом ожидании.
           </p>
