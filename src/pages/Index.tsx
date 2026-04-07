@@ -21,7 +21,7 @@ import {
   Plane,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import droneHero from "@/assets/drone-hero.jpg";
+import droneHero from "@/assets/drone-hero.png";
 
 const navLinks = [
   { label: "Преимущества", href: "#advantages" },
@@ -175,7 +175,7 @@ const Index = () => {
             alt="Дрон в полёте"
             width={400}
             height={300}
-            className="mx-auto mb-8 w-48 md:w-72 object-contain select-none drop-shadow-xl"
+            className="mx-auto mb-8 w-48 md:w-72 object-contain select-none"
           />
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-6">
             Доставка дронами —{" "}
