@@ -132,6 +132,9 @@ const Index = () => {
                 {l.label}
               </button>
             ))}
+            <Button variant="ghost" size="sm" onClick={() => scrollTo("#tracking")}>
+              Отследить заказ
+            </Button>
             <Button size="sm" onClick={() => scrollTo("#contact")}>
               Заказать доставку
             </Button>
