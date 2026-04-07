@@ -27,7 +27,6 @@ const navLinks = [
   { label: "Преимущества", href: "#advantages" },
   { label: "Как это работает", href: "#how" },
   { label: "Отзывы", href: "#reviews" },
-  { label: "Контакты", href: "#contact" },
 ];
 
 const advantages = [
