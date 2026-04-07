@@ -177,7 +177,7 @@ const Index = () => {
             alt="Дрон в полёте"
             width={400}
             height={300}
-            className="mx-auto mb-4 w-40 md:w-56 object-contain select-none"
+            className="mx-auto mb-1 w-52 md:w-72 object-contain select-none"
           />
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-4">
             Доставка дронами —{" "}
