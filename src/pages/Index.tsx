@@ -173,25 +173,33 @@ const Index = () => {
       {/* ===== HERO ===== */}
       <section className="pt-20 pb-10 md:pt-24 md:pb-16 px-4 overflow-hidden">
         <div className="container mx-auto text-center max-w-3xl">
-          <img
-            src={droneHero}
-            alt="Дрон в полёте"
-            width={400}
-            height={300}
-            className="mx-auto -mb-3 w-52 md:w-72 object-contain select-none"
-          />
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-4">
-            Доставка дронами —{" "}
-            <span className="text-primary">быстро</span> и{" "}
-            <span className="text-accent">удобно</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Lintu — современный сервис доставки грузов с помощью автономных дронов.
-            Забудьте о пробках и долгом ожидании.
-          </p>
-          <Button size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
-            Заказать доставку
-          </Button>
+          <ScrollReveal>
+            <img
+              src={droneHero}
+              alt="Дрон в полёте"
+              width={400}
+              height={300}
+              className="mx-auto -mb-3 w-52 md:w-72 object-contain select-none"
+            />
+          </ScrollReveal>
+          <ScrollReveal delay={1}>
+            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-4">
+              Доставка дронами —{" "}
+              <span className="text-primary">быстро</span> и{" "}
+              <span className="text-accent">удобно</span>
+            </h1>
+          </ScrollReveal>
+          <ScrollReveal delay={2}>
+            <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+              Lintu — современный сервис доставки грузов с помощью автономных дронов.
+              Забудьте о пробках и долгом ожидании.
+            </p>
+          </ScrollReveal>
+          <ScrollReveal delay={3}>
+            <Button size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
+              Заказать доставку
+            </Button>
+          </ScrollReveal>
         </div>
       </section>
 
