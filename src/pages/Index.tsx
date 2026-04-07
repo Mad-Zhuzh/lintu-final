@@ -206,24 +206,25 @@ const Index = () => {
       {/* ===== ADVANTAGES ===== */}
       <section id="advantages" className="py-20 px-4 bg-secondary/50">
         <div className="container mx-auto max-w-5xl">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Почему Lintu?</h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
-            Мы объединяем передовые технологии и заботу о клиентах
-          </p>
+          <ScrollReveal>
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Почему Lintu?</h2>
+            <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
+              Мы объединяем передовые технологии и заботу о клиентах
+            </p>
+          </ScrollReveal>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {advantages.map((a) => (
-              <Card
-                key={a.title}
-                className="border-none shadow-md hover:shadow-lg transition-shadow bg-card"
-              >
-                <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <a.icon className="h-7 w-7 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold">{a.title}</h3>
-                  <p className="text-sm text-muted-foreground">{a.desc}</p>
-                </CardContent>
-              </Card>
+            {advantages.map((a, i) => (
+              <ScrollReveal key={a.title} delay={(i % 4) as 0 | 1 | 2 | 3}>
+                <Card className="border-none shadow-md hover:shadow-lg transition-shadow bg-card h-full">
+                  <CardContent className="p-6 flex flex-col items-center text-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <a.icon className="h-7 w-7 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-semibold">{a.title}</h3>
+                    <p className="text-sm text-muted-foreground">{a.desc}</p>
+                  </CardContent>
+                </Card>
+              </ScrollReveal>
             ))}
           </div>
         </div>
