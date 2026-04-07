@@ -168,16 +168,16 @@ const Index = () => {
       </header>
 
       {/* ===== HERO ===== */}
-      <section className="pt-28 pb-20 md:pt-36 md:pb-32 px-4 overflow-hidden">
+      <section className="pt-20 pb-10 md:pt-24 md:pb-16 px-4 overflow-hidden">
         <div className="container mx-auto text-center max-w-3xl">
           <img
             src={droneHero}
             alt="Дрон в полёте"
             width={400}
             height={300}
-            className="mx-auto mb-8 w-48 md:w-72 object-contain select-none"
+            className="mx-auto mb-4 w-40 md:w-56 object-contain select-none"
           />
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-6">
+          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-4">
             Доставка дронами —{" "}
             <span className="text-primary">быстро</span> и{" "}
             <span className="text-accent">удобно</span>
