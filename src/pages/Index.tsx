@@ -27,7 +27,6 @@ const navLinks = [
   { label: "Преимущества", href: "#advantages" },
   { label: "Как это работает", href: "#how" },
   { label: "Отзывы", href: "#reviews" },
-  { label: "Контакты", href: "#contact" },
 ];
 
 const advantages = [
@@ -133,6 +132,9 @@ const Index = () => {
                 {l.label}
               </button>
             ))}
+            <Button variant="ghost" size="sm" onClick={() => scrollTo("#tracking")}>
+              Отследить заказ
+            </Button>
             <Button size="sm" onClick={() => scrollTo("#contact")}>
               Заказать доставку
             </Button>
