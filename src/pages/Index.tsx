@@ -137,7 +137,7 @@ const Index = () => {
               Отследить заказ
             </Button>
             <Button size="sm" onClick={() => scrollTo("#contact")}>
-              Заказать доставку
+              Вызвать дрон
             </Button>
           </nav>
 
