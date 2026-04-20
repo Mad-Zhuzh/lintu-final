@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Package, Inbox, ArrowLeft } from "lucide-react";
+import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -21,12 +23,20 @@ import {
 import { cn } from "@/lib/utils";
 
 type OrderStatus = "Принят" | "В полёте" | "Доставлен";
+type StatusFilter = OrderStatus | "Все";
+type SortKey = "date" | "time" | "price" | "none";
+type SortDir = "asc" | "desc";
 
 interface Order {
   id: string;
   customer: string;
   status: OrderStatus;
-  deliveryTime: string;
+  date: string; // YYYY-MM-DD (апрель 2026)
+  deliveryTime: string; // HH:MM
+  fromAddress: string;
+  toAddress: string;
+  weightKg: number;
+  priceRub: number;
 }
 
 interface Request {
@@ -37,12 +47,94 @@ interface Request {
 }
 
 const initialOrders: Order[] = [
-  { id: "LNT-1042", customer: "Анна Смирнова", status: "В полёте", deliveryTime: "12:40" },
-  { id: "LNT-1041", customer: "Игорь Петров", status: "Принят", deliveryTime: "13:05" },
-  { id: "LNT-1040", customer: "Мария Иванова", status: "Доставлен", deliveryTime: "11:55" },
-  { id: "LNT-1039", customer: "Алексей Орлов", status: "В полёте", deliveryTime: "12:20" },
-  { id: "LNT-1038", customer: "Ольга Кузнецова", status: "Доставлен", deliveryTime: "10:30" },
-  { id: "LNT-1037", customer: "Дмитрий Соколов", status: "Принят", deliveryTime: "13:25" },
+  {
+    id: "LNT-1042",
+    customer: "Анна Смирнова",
+    status: "В полёте",
+    date: "2026-04-18",
+    deliveryTime: "12:40",
+    fromAddress: "ул. Тверская, 10",
+    toAddress: "Кутузовский пр-т, 24",
+    weightKg: 1.2,
+    priceRub: 1850,
+  },
+  {
+    id: "LNT-1041",
+    customer: "Игорь Петров",
+    status: "Принят",
+    date: "2026-04-19",
+    deliveryTime: "13:05",
+    fromAddress: "Ленинский пр-т, 45",
+    toAddress: "ул. Арбат, 12",
+    weightKg: 0.6,
+    priceRub: 1200,
+  },
+  {
+    id: "LNT-1040",
+    customer: "Мария Иванова",
+    status: "Доставлен",
+    date: "2026-04-15",
+    deliveryTime: "11:55",
+    fromAddress: "Пресненская наб., 8",
+    toAddress: "ул. Маросейка, 6",
+    weightKg: 2.1,
+    priceRub: 2950,
+  },
+  {
+    id: "LNT-1039",
+    customer: "Алексей Орлов",
+    status: "В полёте",
+    date: "2026-04-20",
+    deliveryTime: "12:20",
+    fromAddress: "Варшавское ш., 56",
+    toAddress: "ул. Покровка, 18",
+    weightKg: 2.8,
+    priceRub: 4600,
+  },
+  {
+    id: "LNT-1038",
+    customer: "Ольга Кузнецова",
+    status: "Доставлен",
+    date: "2026-04-10",
+    deliveryTime: "10:30",
+    fromAddress: "Мичуринский пр-т, 22",
+    toAddress: "Большая Никитская, 14",
+    weightKg: 0.4,
+    priceRub: 1050,
+  },
+  {
+    id: "LNT-1037",
+    customer: "Дмитрий Соколов",
+    status: "Принят",
+    date: "2026-04-22",
+    deliveryTime: "13:25",
+    fromAddress: "Ленинградский пр-т, 80",
+    toAddress: "ул. Пятницкая, 30",
+    weightKg: 1.7,
+    priceRub: 2400,
+  },
+  {
+    id: "LNT-1036",
+    customer: "Елена Васильева",
+    status: "Доставлен",
+    date: "2026-04-05",
+    deliveryTime: "09:15",
+    fromAddress: "Профсоюзная ул., 100",
+    toAddress: "ул. Солянка, 5",
+    weightKg: 3.0,
+    priceRub: 4900,
+  },
+  {
+    id: "LNT-1035",
+    customer: "Михаил Новиков",
+    status: "В полёте",
+    date: "2026-04-21",
+    deliveryTime: "14:10",
+    fromAddress: "Дмитровское ш., 71",
+    toAddress: "ул. Большая Ордынка, 40",
+    weightKg: 0.9,
+    priceRub: 1500,
+  },
 ];
 
 const initialRequests: Request[] = [
@@ -59,12 +151,90 @@ const statusStyles: Record<OrderStatus, string> = {
   "Доставлен": "bg-primary/10 text-primary hover:bg-primary/10 border-primary/30",
 };
 
+const formatDate = (iso: string) => {
+  const [, m, d] = iso.split("-");
+  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} 2026`;
+};
+
+const formatPrice = (rub: number) =>
+  new Intl.NumberFormat("ru-RU").format(rub) + " ₽";
+
 const Admin = () => {
   const [tab, setTab] = useState<"orders" | "requests">("orders");
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("Все");
+  const [sortKey, setSortKey] = useState<SortKey>("none");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
   const updateStatus = (id: string, status: OrderStatus) => {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+  };
+
+  const toggleSort = (key: Exclude<SortKey, "none">) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortKey("none");
+      setSortDir("desc");
+    }
+  };
+
+  const visibleOrders = useMemo(() => {
+    let list = [...orders];
+
+    if (statusFilter !== "Все") {
+      list = list.filter((o) => o.status === statusFilter);
+    }
+
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (o) =>
+          o.id.toLowerCase().includes(q) ||
+          o.customer.toLowerCase().includes(q) ||
+          o.fromAddress.toLowerCase().includes(q) ||
+          o.toAddress.toLowerCase().includes(q),
+      );
+    }
+
+    if (sortKey !== "none") {
+      list.sort((a, b) => {
+        let cmp = 0;
+        if (sortKey === "date") {
+          cmp = a.date.localeCompare(b.date);
+          if (cmp === 0) cmp = a.deliveryTime.localeCompare(b.deliveryTime);
+        } else if (sortKey === "time") {
+          cmp = a.deliveryTime.localeCompare(b.deliveryTime);
+        } else if (sortKey === "price") {
+          cmp = a.priceRub - b.priceRub;
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return list;
+  }, [orders, statusFilter, search, sortKey, sortDir]);
+
+  const SortIcon = ({ active }: { active: boolean }) =>
+    !active ? (
+      <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+    ) : sortDir === "asc" ? (
+      <ArrowUp className="h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5" />
+    );
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("Все");
+    setSortKey("none");
+    setSortDir("desc");
   };
 
   return (
@@ -124,7 +294,7 @@ const Admin = () => {
       <main className="container py-8">
         {tab === "orders" ? (
           <section>
-            <div className="mb-6 flex items-end justify-between">
+            <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight">Заказы</h1>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -138,48 +308,162 @@ const Admin = () => {
                 <Badge className="font-normal bg-accent text-accent-foreground hover:bg-accent">
                   В полёте: {orders.filter((o) => o.status === "В полёте").length}
                 </Badge>
+                <Badge variant="outline" className="font-normal">
+                  Показано: {visibleOrders.length}
+                </Badge>
               </div>
             </div>
+
+            {/* Toolbar: search + filters */}
+            <Card className="p-4 mb-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Поиск по номеру, клиенту, адресу…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Статус:</span>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Все">Все</SelectItem>
+                      <SelectItem value="Принят">Принят</SelectItem>
+                      <SelectItem value="В полёте">В полёте</SelectItem>
+                      <SelectItem value="Доставлен">Доставлен</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Сортировка:</span>
+                  <Select
+                    value={sortKey === "none" ? "none" : `${sortKey}:${sortDir}`}
+                    onValueChange={(v) => {
+                      if (v === "none") {
+                        setSortKey("none");
+                        return;
+                      }
+                      const [k, d] = v.split(":") as [Exclude<SortKey, "none">, SortDir];
+                      setSortKey(k);
+                      setSortDir(d);
+                    }}
+                  >
+                    <SelectTrigger className="w-[210px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Без сортировки</SelectItem>
+                      <SelectItem value="date:asc">Дата ↑ (старые)</SelectItem>
+                      <SelectItem value="date:desc">Дата ↓ (новые)</SelectItem>
+                      <SelectItem value="time:asc">Время ↑</SelectItem>
+                      <SelectItem value="time:desc">Время ↓</SelectItem>
+                      <SelectItem value="price:asc">Стоимость ↑</SelectItem>
+                      <SelectItem value="price:desc">Стоимость ↓</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button variant="ghost" size="sm" onClick={resetFilters}>
+                  Сбросить
+                </Button>
+              </div>
+            </Card>
 
             <Card className="overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="w-[140px]">Номер</TableHead>
-                    <TableHead>Клиент</TableHead>
-                    <TableHead className="w-[160px]">Статус</TableHead>
-                    <TableHead className="w-[140px]">Доставка</TableHead>
-                    <TableHead className="w-[180px] text-right">Изменить статус</TableHead>
+                    <TableHead className="w-[120px]">Номер</TableHead>
+                    <TableHead className="w-[160px]">Клиент</TableHead>
+                    <TableHead className="w-[140px]">
+                      <button
+                        onClick={() => toggleSort("date")}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Дата <SortIcon active={sortKey === "date"} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[110px]">
+                      <button
+                        onClick={() => toggleSort("time")}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Время <SortIcon active={sortKey === "time"} />
+                      </button>
+                    </TableHead>
+                    <TableHead>Откуда</TableHead>
+                    <TableHead>Куда</TableHead>
+                    <TableHead className="w-[80px]">Вес</TableHead>
+                    <TableHead className="w-[130px]">
+                      <button
+                        onClick={() => toggleSort("price")}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Стоимость <SortIcon active={sortKey === "price"} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[140px]">Статус</TableHead>
+                    <TableHead className="w-[170px] text-right">Изменить статус</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-mono text-sm font-medium">{order.id}</TableCell>
-                      <TableCell>{order.customer}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn("font-normal", statusStyles[order.status])}>
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{order.deliveryTime}</TableCell>
-                      <TableCell className="text-right">
-                        <Select
-                          value={order.status}
-                          onValueChange={(v) => updateStatus(order.id, v as OrderStatus)}
-                        >
-                          <SelectTrigger className="w-[160px] ml-auto">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Принят">Принят</SelectItem>
-                            <SelectItem value="В полёте">В полёте</SelectItem>
-                            <SelectItem value="Доставлен">Доставлен</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  {visibleOrders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
+                        Ничего не найдено
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    visibleOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono text-sm font-medium">{order.id}</TableCell>
+                        <TableCell>{order.customer}</TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {formatDate(order.date)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{order.deliveryTime}</TableCell>
+                        <TableCell className="text-sm">{order.fromAddress}</TableCell>
+                        <TableCell className="text-sm">{order.toAddress}</TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {order.weightKg.toFixed(1)} кг
+                        </TableCell>
+                        <TableCell className="font-bold whitespace-nowrap">
+                          {formatPrice(order.priceRub)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn("font-normal", statusStyles[order.status])}>
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Select
+                            value={order.status}
+                            onValueChange={(v) => updateStatus(order.id, v as OrderStatus)}
+                          >
+                            <SelectTrigger className="w-[150px] ml-auto">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Принят">Принят</SelectItem>
+                              <SelectItem value="В полёте">В полёте</SelectItem>
+                              <SelectItem value="Доставлен">Доставлен</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </Card>
