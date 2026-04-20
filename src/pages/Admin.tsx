@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -161,8 +162,14 @@ const formatPrice = (rub: number) =>
   new Intl.NumberFormat("ru-RU").format(rub) + " ₽";
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"orders" | "requests">("orders");
   const [orders, setOrders] = useState<Order[]>(initialOrders);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/admin/login", { replace: true });
+  };
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Все");
@@ -280,13 +287,19 @@ const Admin = () => {
             </nav>
           </div>
 
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            На сайт
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              На сайт
+            </Link>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Выйти
+            </Button>
+          </div>
         </div>
       </header>
 
