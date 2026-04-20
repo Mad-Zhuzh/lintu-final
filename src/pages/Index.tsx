@@ -137,7 +137,7 @@ const Index = () => {
               Отследить заказ
             </Button>
             <Button size="sm" onClick={() => scrollTo("#contact")}>
-              Вызвать дрон
+              Заказать доставку
             </Button>
           </nav>
 
@@ -164,7 +164,7 @@ const Index = () => {
               </button>
             ))}
             <Button size="sm" className="w-full" onClick={() => scrollTo("#contact")}>
-              Вызвать дрон
+              Заказать доставку
             </Button>
           </nav>
         )}
@@ -197,7 +197,7 @@ const Index = () => {
           </ScrollReveal>
           <ScrollReveal delay={3}>
             <Button size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
-              Вызвать дрон
+              Заказать доставку
             </Button>
           </ScrollReveal>
         </div>
