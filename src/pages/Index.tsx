@@ -108,6 +108,13 @@ const Index = () => {
     setForm({ name: "", phone: "", email: "" });
   };
 
+  const handleOpenGamePreview = () => {
+    toast({
+      title: "Мини-игра скоро будет доступна",
+      description: "В следующем обновлении откроем игру в модальном окне.",
+    });
+  };
+
   const scrollTo = (href: string) => {
     setMobileMenuOpen(false);
     document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
@@ -257,6 +264,42 @@ const Index = () => {
               </ScrollReveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ===== DELIVERY GAME PREVIEW ===== */}
+      <section id="game-preview" className="py-20 px-4 bg-[#fafbfc]">
+        <div className="container mx-auto max-w-5xl">
+          <ScrollReveal>
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Мини-игра: доставка дроном</h2>
+            <p className="text-center text-muted-foreground mb-0 max-w-2xl mx-auto">
+              Попробуйте, как работает доставка в формате игры. Управляйте дроном, облетайте препятствия и
+              доставьте заказ до точки назначения.
+            </p>
+          </ScrollReveal>
+
+          <ScrollReveal delay={1} className="mt-0">
+            <div
+              className="relative mx-auto min-h-[280px] max-w-5xl overflow-hidden rounded-2xl bg-center bg-no-repeat max-sm:bg-[length:100%_auto] sm:bg-cover sm:min-h-[340px]"
+              style={{ backgroundImage: "url(/images/background-game1.png)" }}
+            >
+              {/* Явная «коробка» под дрон: иначе flex-1 схлопывается по высоте картинки и justify-end не работает */}
+              <div className="absolute inset-x-6 bottom-8 top-12 flex items-end justify-center sm:inset-x-10 sm:bottom-10 sm:top-14">
+                <img
+                  src="/images/friendly-drone.png"
+                  alt="Иллюстрация дрона Lintu"
+                  width={360}
+                  height={270}
+                  className="game-preview-drone w-52 object-contain object-bottom select-none sm:w-64 md:w-72"
+                />
+              </div>
+            </div>
+            <div className="mt-0 flex justify-center">
+              <Button size="lg" className="min-w-36" onClick={handleOpenGamePreview}>
+                Играть
+              </Button>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
