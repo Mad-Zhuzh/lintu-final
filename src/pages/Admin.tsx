@@ -1,11 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown, LogOut } from "lucide-react";
+import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown, LogOut, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -23,7 +35,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-type OrderStatus = "Принят" | "В полёте" | "Доставлен";
+type OrderStatus = "Принят" | "В полёте" | "Доставлен" | "Отменен";
+type RequestStatus = "Новая" | "Отменена" | "Заказ сформирован";
 type StatusFilter = OrderStatus | "Все";
 type SortKey = "date" | "time" | "price" | "none";
 type SortDir = "asc" | "desc";
@@ -45,7 +58,11 @@ interface Request {
   name: string;
   phone: string;
   email: string;
+  status: RequestStatus;
 }
+
+const REQUESTS_STORAGE_KEY = "lintu_requests";
+const ORDERS_STORAGE_KEY = "lintu_orders";
 
 const initialOrders: Order[] = [
   {
@@ -139,17 +156,41 @@ const initialOrders: Order[] = [
 ];
 
 const initialRequests: Request[] = [
-  { id: "1", name: "Екатерина Морозова", phone: "+7 (900) 123-45-67", email: "kate.m@mail.ru" },
-  { id: "2", name: "Павел Новиков", phone: "+7 (905) 765-43-21", email: "p.novikov@gmail.com" },
-  { id: "3", name: "Виктория Лебедева", phone: "+7 (911) 222-33-44", email: "vika.l@yandex.ru" },
-  { id: "4", name: "Сергей Волков", phone: "+7 (926) 555-66-77", email: "s.volkov@mail.ru" },
-  { id: "5", name: "Наталья Зайцева", phone: "+7 (903) 888-99-00", email: "n.zaytseva@gmail.com" },
+  { id: "1", name: "Екатерина Морозова", phone: "+7 (900) 123-45-67", email: "kate.m@mail.ru", status: "Новая" },
+  { id: "2", name: "Павел Новиков", phone: "+7 (905) 765-43-21", email: "p.novikov@gmail.com", status: "Новая" },
+  { id: "3", name: "Виктория Лебедева", phone: "+7 (911) 222-33-44", email: "vika.l@yandex.ru", status: "Новая" },
+  { id: "4", name: "Сергей Волков", phone: "+7 (926) 555-66-77", email: "s.volkov@mail.ru", status: "Новая" },
+  { id: "5", name: "Наталья Зайцева", phone: "+7 (903) 888-99-00", email: "n.zaytseva@gmail.com", status: "Новая" },
 ];
 
 const statusStyles: Record<OrderStatus, string> = {
   "Принят": "bg-muted text-foreground hover:bg-muted",
   "В полёте": "bg-accent/15 text-accent hover:bg-accent/15 border-accent/30",
   "Доставлен": "bg-primary/10 text-primary hover:bg-primary/10 border-primary/30",
+  "Отменен": "bg-destructive/10 text-destructive hover:bg-destructive/10 border-destructive/30",
+};
+
+const requestStatusStyles: Record<RequestStatus, string> = {
+  "Новая": "bg-primary/10 text-primary hover:bg-primary/10 border-primary/30",
+  "Отменена": "bg-muted text-muted-foreground hover:bg-muted",
+  "Заказ сформирован": "bg-accent/15 text-accent hover:bg-accent/15 border-accent/30",
+};
+
+const normalizeRequest = (
+  request: Partial<Request> & Pick<Request, "id" | "name" | "phone" | "email">,
+): Request => {
+  const status =
+    request.status === "Отменена" || request.status === "Заказ сформирован" || request.status === "Новая"
+      ? request.status
+      : "Новая";
+
+  return {
+    id: request.id,
+    name: request.name,
+    phone: request.phone,
+    email: request.email,
+    status,
+  };
 };
 
 const formatDate = (iso: string) => {
@@ -164,11 +205,84 @@ const formatPrice = (rub: number) =>
 const Admin = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"orders" | "requests">("orders");
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const stored = localStorage.getItem(ORDERS_STORAGE_KEY);
+    if (!stored) return initialOrders;
+
+    try {
+      const parsed = JSON.parse(stored) as Order[];
+      return Array.isArray(parsed) ? parsed : initialOrders;
+    } catch {
+      return initialOrders;
+    }
+  });
+  const [requests, setRequests] = useState<Request[]>(() => {
+    const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
+    if (!stored) return initialRequests;
+
+    try {
+      const parsed = JSON.parse(stored) as Request[];
+      return Array.isArray(parsed) ? parsed.map(normalizeRequest) : initialRequests;
+    } catch {
+      return initialRequests;
+    }
+  });
+
+  useEffect(() => {
+    const syncRequests = () => {
+      const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
+      if (!stored) {
+        setRequests(initialRequests);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored) as Request[];
+        setRequests(Array.isArray(parsed) ? parsed.map(normalizeRequest) : initialRequests);
+      } catch {
+        setRequests(initialRequests);
+      }
+    };
+
+    window.addEventListener("storage", syncRequests);
+    return () => window.removeEventListener("storage", syncRequests);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+  }, [orders]);
+
+  const [createOrderDialogOpen, setCreateOrderDialogOpen] = useState(false);
+  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
+  const [orderDraft, setOrderDraft] = useState<{
+    requestId: string;
+    id: string;
+    customer: string;
+    fromAddress: string;
+    toAddress: string;
+    weightKg: string;
+    priceRub: number;
+  } | null>(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/admin/login", { replace: true });
+  };
+
+  const updateRequestStatus = (id: string, status: RequestStatus) => {
+    setRequests((prev) => {
+      const next = prev.map((request) => (request.id === id ? { ...request, status } : request));
+      localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const deleteRequest = (id: string) => {
+    setRequests((prev) => {
+      const next = prev.filter((request) => request.id !== id);
+      localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
   const [search, setSearch] = useState("");
@@ -178,6 +292,56 @@ const Admin = () => {
 
   const updateStatus = (id: string, status: OrderStatus) => {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+  };
+
+  const getNextOrderId = () => {
+    const maxIdNumber = orders.reduce((max, order) => {
+      const match = order.id.match(/^LNT-(\d+)$/);
+      if (!match) return max;
+      const current = parseInt(match[1], 10);
+      return Number.isNaN(current) ? max : Math.max(max, current);
+    }, 0);
+
+    return `LNT-${String(maxIdNumber + 1).padStart(4, "0")}`;
+  };
+
+  const openCreateOrderFromRequest = (request: Request) => {
+    setOrderDraft({
+      requestId: request.id,
+      id: getNextOrderId(),
+      customer: request.name,
+      fromAddress: "",
+      toAddress: "",
+      weightKg: "",
+      priceRub: 1000,
+    });
+    setCreateOrderDialogOpen(true);
+  };
+
+  const handleConfirmCreateOrder = () => {
+    if (!orderDraft) return;
+
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const deliveryTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    const newOrder: Order = {
+      id: orderDraft.id,
+      customer: orderDraft.customer.trim() || "Без имени",
+      status: "Принят",
+      date,
+      deliveryTime,
+      fromAddress: orderDraft.fromAddress.trim() || "Не указан",
+      toAddress: orderDraft.toAddress.trim() || "Не указан",
+      weightKg: Number.parseFloat(orderDraft.weightKg) || 0,
+      priceRub: 1000,
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+    updateRequestStatus(orderDraft.requestId, "Заказ сформирован");
+    setCreateOrderDialogOpen(false);
+    setOrderDraft(null);
+    setTab("orders");
   };
 
   const toggleSort = (key: Exclude<SortKey, "none">) => {
@@ -354,6 +518,7 @@ const Admin = () => {
                       <SelectItem value="Принят">Принят</SelectItem>
                       <SelectItem value="В полёте">В полёте</SelectItem>
                       <SelectItem value="Доставлен">Доставлен</SelectItem>
+                      <SelectItem value="Отменен">Отменен</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -471,6 +636,7 @@ const Admin = () => {
                               <SelectItem value="Принят">Принят</SelectItem>
                               <SelectItem value="В полёте">В полёте</SelectItem>
                               <SelectItem value="Доставлен">Доставлен</SelectItem>
+                              <SelectItem value="Отменен">Отменен</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -491,7 +657,7 @@ const Admin = () => {
                 </p>
               </div>
               <Badge variant="outline" className="font-normal">
-                Всего: {initialRequests.length}
+                Всего: {requests.length}
               </Badge>
             </div>
 
@@ -502,22 +668,155 @@ const Admin = () => {
                     <TableHead>Имя</TableHead>
                     <TableHead className="w-[220px]">Телефон</TableHead>
                     <TableHead className="w-[260px]">Email</TableHead>
+                    <TableHead className="w-[180px]">Статус</TableHead>
+                    <TableHead className="w-[280px] text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {initialRequests.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.phone}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.email}</TableCell>
+                  {requests.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                        Заявок пока нет
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    requests.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{r.phone}</TableCell>
+                        <TableCell className="text-muted-foreground">{r.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn("font-normal", requestStatusStyles[r.status])}>
+                            {r.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              onClick={() => openCreateOrderFromRequest(r)}
+                              disabled={r.status === "Заказ сформирован"}
+                            >
+                              Сформировать заказ
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => updateRequestStatus(r.id, "Отменена")}
+                              disabled={r.status === "Отменена"}
+                            >
+                              Отменить
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteRequestId(r.id)}
+                              aria-label="Удалить заявку"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </Card>
           </section>
         )}
       </main>
+
+      <Dialog open={createOrderDialogOpen} onOpenChange={setCreateOrderDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Сформировать заказ</DialogTitle>
+            <DialogDescription>Заполните данные для создания заказа на основе заявки.</DialogDescription>
+          </DialogHeader>
+
+          {orderDraft && (
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="order-id">Номер</Label>
+                <Input id="order-id" value={orderDraft.id} readOnly />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="order-customer">Клиент</Label>
+                <Input
+                  id="order-customer"
+                  value={orderDraft.customer}
+                  onChange={(e) => setOrderDraft((prev) => (prev ? { ...prev, customer: e.target.value } : prev))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="order-from">Адрес отправления</Label>
+                <Input
+                  id="order-from"
+                  value={orderDraft.fromAddress}
+                  onChange={(e) => setOrderDraft((prev) => (prev ? { ...prev, fromAddress: e.target.value } : prev))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="order-to">Адрес доставки</Label>
+                <Input
+                  id="order-to"
+                  value={orderDraft.toAddress}
+                  onChange={(e) => setOrderDraft((prev) => (prev ? { ...prev, toAddress: e.target.value } : prev))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="order-weight">Вес (кг)</Label>
+                <Input
+                  id="order-weight"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={orderDraft.weightKg}
+                  onChange={(e) => setOrderDraft((prev) => (prev ? { ...prev, weightKg: e.target.value } : prev))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="order-price">Стоимость</Label>
+                <Input id="order-price" value={`${orderDraft.priceRub} ₽`} readOnly />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOrderDialogOpen(false)}>
+              Отменить
+            </Button>
+            <Button onClick={handleConfirmCreateOrder}>Подтвердить заказ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(deleteRequestId)} onOpenChange={(open) => !open && setDeleteRequestId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить заявку?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Заявка будет удалена из списка.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отменить</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteRequestId) deleteRequest(deleteRequestId);
+                setDeleteRequestId(null);
+              }}
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

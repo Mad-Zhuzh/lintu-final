@@ -2,6 +2,16 @@ import { useState } from "react";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -92,15 +102,50 @@ const reviews = [
   },
 ];
 
+const REQUESTS_STORAGE_KEY = "lintu_requests";
+type RequestStatus = "Новая" | "Отменена" | "Заказ сформирован";
+
 const Index = () => {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  const [gameDialogOpen, setGameDialogOpen] = useState(false);
+  const [gameFrameKey, setGameFrameKey] = useState(0);
   const [form, setForm] = useState({ name: "", phone: "", email: "" });
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingResult, setTrackingResult] = useState<null | { status: string; time: string }>(null);
 
+  const formatPhoneNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return "";
+
+    const normalized = digits.startsWith("8") ? `7${digits.slice(1)}` : digits;
+    const national = normalized.startsWith("7") ? normalized.slice(1, 11) : normalized.slice(0, 10);
+
+    let formatted = "+7";
+    if (national.length > 0) formatted += ` (${national.slice(0, 3)}`;
+    if (national.length >= 4) formatted += `) ${national.slice(3, 6)}`;
+    if (national.length >= 7) formatted += `-${national.slice(6, 8)}`;
+    if (national.length >= 9) formatted += `-${national.slice(8, 10)}`;
+
+    return formatted;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newRequest = {
+      id: crypto.randomUUID(),
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      status: "Новая" as RequestStatus,
+    };
+
+    const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
+    const requests = stored ? (JSON.parse(stored) as typeof newRequest[]) : [];
+    localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify([newRequest, ...requests]));
+
     toast({
       title: "Заявка отправлена!",
       description: "Мы свяжемся с вами в ближайшее время.",
@@ -109,10 +154,15 @@ const Index = () => {
   };
 
   const handleOpenGamePreview = () => {
-    toast({
-      title: "Мини-игра скоро будет доступна",
-      description: "В следующем обновлении откроем игру в модальном окне.",
-    });
+    setGameDialogOpen(true);
+  };
+
+  const handleGameDialogChange = (open: boolean) => {
+    setGameDialogOpen(open);
+    if (!open) {
+      // Force iframe remount on close to reset game state.
+      setGameFrameKey((prev) => prev + 1);
+    }
   };
 
   const scrollTo = (href: string) => {
@@ -121,7 +171,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[#fafbfc] text-foreground">
       {/* ===== NAVIGATION ===== */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
@@ -140,7 +190,7 @@ const Index = () => {
                 {l.label}
               </button>
             ))}
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("#tracking")}>
+            <Button variant="ghost" size="sm" onClick={() => setTrackingDialogOpen(true)}>
               Отследить заказ
             </Button>
             <Button size="sm" onClick={() => scrollTo("#contact")}>
@@ -170,6 +220,17 @@ const Index = () => {
                 {l.label}
               </button>
             ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setTrackingDialogOpen(true);
+              }}
+            >
+              Отследить заказ
+            </Button>
             <Button size="sm" className="w-full" onClick={() => scrollTo("#contact")}>
               Заказать доставку
             </Button>
@@ -178,7 +239,7 @@ const Index = () => {
       </header>
 
       {/* ===== HERO ===== */}
-      <section className="pt-20 pb-10 md:pt-24 md:pb-16 px-4 overflow-hidden">
+      <section className="bg-[#fafbfc] pt-20 pb-24 md:pt-24 md:pb-32 px-4 overflow-hidden">
         <div className="container mx-auto text-center max-w-3xl">
           <ScrollReveal>
             <img
@@ -211,7 +272,7 @@ const Index = () => {
       </section>
 
       {/* ===== ADVANTAGES ===== */}
-      <section id="advantages" className="py-20 px-4 bg-secondary/50">
+      <section id="advantages" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Почему Lintu?</h2>
@@ -238,7 +299,7 @@ const Index = () => {
       </section>
 
       {/* ===== HOW IT WORKS ===== */}
-      <section id="how" className="py-20 px-4">
+      <section id="how" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-4xl">
           <ScrollReveal>
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Как это работает</h2>
@@ -268,7 +329,7 @@ const Index = () => {
       </section>
 
       {/* ===== DELIVERY GAME PREVIEW ===== */}
-      <section id="game-preview" className="py-20 px-4 bg-[#fafbfc]">
+      <section id="game-preview" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Мини-игра: доставка дроном</h2>
@@ -304,7 +365,7 @@ const Index = () => {
       </section>
 
       {/* ===== REVIEWS ===== */}
-      <section id="reviews" className="py-20 px-4 bg-secondary/50">
+      <section id="reviews" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Отзывы клиентов</h2>
@@ -335,58 +396,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ===== TRACKING ===== */}
-      <section id="tracking" className="py-20 px-4">
-        <ScrollReveal>
-          <div className="container mx-auto max-w-lg">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Отследить заказ</h2>
-            <p className="text-center text-muted-foreground mb-10">
-              Введите номер заказа, чтобы узнать его статус
-            </p>
-            <div className="flex gap-3">
-              <Input
-                placeholder="Например, LNT-20260401"
-                value={trackingNumber}
-                onChange={(e) => {
-                  setTrackingNumber(e.target.value);
-                  setTrackingResult(null);
-                }}
-              />
-              <Button
-                onClick={() => {
-                  if (trackingNumber.trim()) {
-                    setTrackingResult({ status: "В полёте", time: "15 минут" });
-                  }
-                }}
-                className="shrink-0"
-              >
-                <Search className="mr-2 h-4 w-4" />
-                Отследить
-              </Button>
-            </div>
-            {trackingResult && (
-              <Card className="mt-6 border-none shadow-md bg-card">
-                <CardContent className="p-6 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Plane className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      Статус: <span className="text-primary">{trackingResult.status}</span>
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Ожидаемое время доставки — {trackingResult.time}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </ScrollReveal>
-      </section>
-
       {/* ===== CONTACT FORM ===== */}
-      <section id="contact" className="py-20 px-4">
+      <section id="contact" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <ScrollReveal>
           <div className="container mx-auto max-w-lg">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Оставьте заявку</h2>
@@ -412,7 +423,7 @@ const Index = () => {
                   placeholder="+7 (___) ___-__-__"
                   required
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })}
                 />
               </div>
               <div className="space-y-2">
@@ -434,6 +445,112 @@ const Index = () => {
           </div>
         </ScrollReveal>
       </section>
+
+      <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl md:text-3xl">Отследить заказ</DialogTitle>
+            <DialogDescription>Введите номер заказа, чтобы узнать его статус</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Input
+              placeholder="Например, LNT-20260401"
+              value={trackingNumber}
+              onChange={(e) => {
+                setTrackingNumber(e.target.value);
+                setTrackingResult(null);
+              }}
+              className="w-full"
+            />
+            <Button
+              onClick={() => {
+                if (trackingNumber.trim()) {
+                  setTrackingResult({ status: "В полёте", time: "15 минут" });
+                }
+              }}
+              className="w-full sm:w-auto sm:shrink-0"
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Отследить
+            </Button>
+          </div>
+
+          {trackingResult && (
+            <Card className="border-none shadow-md bg-card">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Plane className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Статус: <span className="text-primary">{trackingResult.status}</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">Ожидаемое время доставки — {trackingResult.time}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={gameDialogOpen} onOpenChange={handleGameDialogChange}>
+        <DialogPortal>
+          <DialogOverlay />
+          <div className="fixed inset-0 z-50 flex items-stretch justify-center px-4 py-2 sm:py-8">
+            <div className="relative flex w-full max-w-[440px] flex-col">
+              {/* Крестик над игрой на мобильных — закреплён в потоке */}
+              <div className="flex justify-end sm:hidden">
+                <DialogClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Закрыть мини-игру"
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </DialogClose>
+              </div>
+
+              {/* Крестик сбоку на десктопе */}
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  aria-label="Закрыть мини-игру"
+                  className="absolute right-0 top-0 z-[60] hidden translate-x-[120%] rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground sm:block"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </DialogClose>
+
+              {/* Игра — заполняет доступное место */}
+              <div className="min-h-0 w-full flex-1">
+                <iframe
+                  key={gameFrameKey}
+                  src="https://mad-zhuzh.github.io/Lintu-Delivery-Game/?embed=true"
+                  title="Мини-игра Lintu Delivery"
+                  className="block h-full w-full border-0"
+                  scrolling="no"
+                />
+              </div>
+
+              {/* Ссылка под игрой — без подложки */}
+              <div className="shrink-0 pt-2 text-center sm:pt-3">
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground transition-colors hover:text-primary hover:underline"
+                  onClick={() => {
+                    handleGameDialogChange(false);
+                    setTimeout(() => scrollTo("#contact"), 0);
+                  }}
+                >
+                  Оформить доставку →
+                </button>
+              </div>
+            </div>
+          </div>
+        </DialogPortal>
+      </Dialog>
 
       {/* ===== FOOTER ===== */}
       <footer className="border-t border-border bg-card py-12 px-4">
@@ -478,14 +595,24 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-            <p>© {new Date().getFullYear()} Lintu. Все права защищены.</p>
-            <div className="flex gap-4">
-              <a href="#" className="hover:text-foreground transition-colors">
-                Политика конфиденциальности
-              </a>
-              <a href="#" className="hover:text-foreground transition-colors">
-                Оферта
+          <div className="mt-10 pt-6 border-t border-border text-xs text-muted-foreground">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <p>© {new Date().getFullYear()} Lintu. Все права защищены.</p>
+              <div className="flex gap-4">
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Политика конфиденциальности
+                </a>
+                <a href="#" className="hover:text-foreground transition-colors">
+                  Оферта
+                </a>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-center md:justify-end">
+              <a
+                href="/admin"
+                className="text-muted-foreground/50 underline underline-offset-2 hover:text-foreground transition-colors"
+              >
+                Вход для сотрудников
               </a>
             </div>
           </div>

@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
+const ADMIN_EMAIL = "admin@lintu.ru";
+const ADMIN_PASSWORD = "Lintu_demo_2026";
+
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email] = useState(ADMIN_EMAIL);
+  const [password] = useState(ADMIN_PASSWORD);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -84,7 +87,7 @@ const AdminLogin = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">Вход в админ-панель</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Введите логин и пароль администратора
+            Демо-доступ уже заполнен. Нажмите «Войти», чтобы открыть админ-панель.
             </p>
           </div>
 
@@ -97,8 +100,7 @@ const AdminLogin = () => {
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                readOnly
               />
             </div>
             <div className="space-y-2">
@@ -109,8 +111,7 @@ const AdminLogin = () => {
                 autoComplete="current-password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                readOnly
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
