@@ -36,7 +36,9 @@ const AdminLogin = () => {
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/admin` },
+        options: {
+          emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}admin`,
+        },
       });
       if (!signUpError) {
         const retry = await supabase.auth.signInWithPassword({ email, password });

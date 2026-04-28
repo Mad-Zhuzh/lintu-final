@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -609,12 +610,12 @@ const Index = () => {
               </div>
             </div>
             <div className="mt-3 flex justify-center md:justify-end">
-              <a
-                href="/admin"
+              <Link
+                to="/admin"
                 className="text-muted-foreground/50 underline underline-offset-2 hover:text-foreground transition-colors"
               >
                 Вход для сотрудников
-              </a>
+              </Link>
             </div>
           </div>
         </div>
