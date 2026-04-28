@@ -343,12 +343,12 @@ const Index = () => {
           <ScrollReveal delay={1} className="mt-0">
             <div
               className="relative mx-auto min-h-[280px] max-w-5xl overflow-hidden rounded-2xl bg-center bg-no-repeat max-sm:bg-[length:100%_auto] sm:bg-cover sm:min-h-[340px]"
-              style={{ backgroundImage: "url(/images/background-game1.png)" }}
+              style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/background-game1.png)` }}
             >
               {/* Явная «коробка» под дрон: иначе flex-1 схлопывается по высоте картинки и justify-end не работает */}
               <div className="absolute inset-x-6 bottom-8 top-12 flex items-end justify-center sm:inset-x-10 sm:bottom-10 sm:top-14">
                 <img
-                  src="/images/friendly-drone.png"
+                  src={`${import.meta.env.BASE_URL}images/friendly-drone.png`}
                   alt="Иллюстрация дрона Lintu"
                   width={360}
                   height={270}
