@@ -251,16 +251,17 @@ const Index = () => {
             />
           </ScrollReveal>
           <ScrollReveal delay={1}>
-            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-4">
-              Доставка дронами —{" "}
+            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-8">
+              Доставка дронами: {" "}
               <span className="text-primary">быстро</span> и{" "}
               <span className="text-accent">удобно</span>
             </h1>
           </ScrollReveal>
           <ScrollReveal delay={2}>
             <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Lintu — современный сервис доставки грузов с помощью автономных дронов.
-              Забудьте о пробках и долгом ожидании.
+              Lintu — доставка для тех, кто ценит скорость и не хочет ждать.
+              <br />
+              Дроны привозят посылки напрямую — быстрее, чем курьеры.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={3}>
@@ -534,11 +535,11 @@ const Index = () => {
                 />
               </div>
 
-              {/* Ссылка под игрой — без подложки */}
+              {/* Ссылка под игрой — без подложки, лёгкий текстовый ореол для читаемости на тёмном фоне */}
               <div className="shrink-0 pt-2 text-center sm:pt-3">
                 <button
                   type="button"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary hover:underline"
+                  className="text-sm text-muted-foreground transition-colors [text-shadow:0_0_1px_rgb(255_255_255),0_0_4px_rgb(255_255_255/0.95),0_0_10px_rgb(255_255_255/0.85),0_0_20px_rgb(255_255_255/0.55)] hover:text-primary hover:underline"
                   onClick={() => {
                     handleGameDialogChange(false);
                     setTimeout(() => scrollTo("#contact"), 0);
