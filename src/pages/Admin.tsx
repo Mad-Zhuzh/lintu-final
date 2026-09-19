@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown, LogOut, Trash2 } from "lucide-react";
+import { Package, Inbox, ArrowLeft, Search, ArrowUpDown, ArrowUp, ArrowDown, LogOut, Trash2, Check, ChevronDown, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 type OrderStatus = "Принят" | "В полёте" | "Доставлен" | "Отменен";
@@ -40,6 +47,9 @@ type RequestStatus = "Новая" | "Отменена" | "Заказ сформ�
 type StatusFilter = OrderStatus | "Все";
 type SortKey = "date" | "time" | "price" | "none";
 type SortDir = "asc" | "desc";
+type RequestStatusFilter = RequestStatus | "Все";
+type RequestSortDir = "asc" | "desc";
+type DeleteTarget = { kind: "order" | "request"; id: string };
 
 interface Order {
   id: string;
@@ -59,6 +69,7 @@ interface Request {
   phone: string;
   email: string;
   status: RequestStatus;
+  createdAt: string;
 }
 
 const REQUESTS_STORAGE_KEY = "lintu_requests";
@@ -156,28 +167,34 @@ const initialOrders: Order[] = [
 ];
 
 const initialRequests: Request[] = [
-  { id: "1", name: "Екатерина Морозова", phone: "+7 (900) 123-45-67", email: "kate.m@mail.ru", status: "Новая" },
-  { id: "2", name: "Павел Новиков", phone: "+7 (905) 765-43-21", email: "p.novikov@gmail.com", status: "Новая" },
-  { id: "3", name: "Виктория Лебедева", phone: "+7 (911) 222-33-44", email: "vika.l@yandex.ru", status: "Новая" },
-  { id: "4", name: "Сергей Волков", phone: "+7 (926) 555-66-77", email: "s.volkov@mail.ru", status: "Новая" },
-  { id: "5", name: "Наталья Зайцева", phone: "+7 (903) 888-99-00", email: "n.zaytseva@gmail.com", status: "Новая" },
+  { id: "1", name: "Екатерина Морозова", phone: "+7 (900) 123-45-67", email: "kate.m@mail.ru", status: "Новая", createdAt: "2026-04-03T09:15:00+03:00" },
+  { id: "2", name: "Павел Новиков", phone: "+7 (905) 765-43-21", email: "p.novikov@gmail.com", status: "Новая", createdAt: "2026-04-09T14:40:00+03:00" },
+  { id: "3", name: "Виктория Лебедева", phone: "+7 (911) 222-33-44", email: "vika.l@yandex.ru", status: "Новая", createdAt: "2026-04-16T11:05:00+03:00" },
+  { id: "4", name: "Сергей Волков", phone: "+7 (926) 555-66-77", email: "s.volkov@mail.ru", status: "Новая", createdAt: "2026-04-24T16:20:00+03:00" },
+  { id: "5", name: "Наталья Зайцева", phone: "+7 (903) 888-99-00", email: "n.zaytseva@gmail.com", status: "Новая", createdAt: "2026-04-30T10:35:00+03:00" },
 ];
 
+const demoRequestTimestamps = initialRequests.map((request) => request.createdAt);
+
 const statusStyles: Record<OrderStatus, string> = {
-  "Принят": "bg-muted text-foreground hover:bg-muted",
-  "В полёте": "bg-accent/15 text-accent hover:bg-accent/15 border-accent/30",
-  "Доставлен": "bg-primary/10 text-primary hover:bg-primary/10 border-primary/30",
-  "Отменен": "bg-destructive/10 text-destructive hover:bg-destructive/10 border-destructive/30",
+  "Принят": "text-foreground",
+  "В полёте": "text-accent",
+  "Доставлен": "text-primary",
+  "Отменен": "text-muted-foreground",
 };
 
 const requestStatusStyles: Record<RequestStatus, string> = {
-  "Новая": "bg-primary/10 text-primary hover:bg-primary/10 border-primary/30",
-  "Отменена": "bg-muted text-muted-foreground hover:bg-muted",
-  "Заказ сформирован": "bg-accent/15 text-accent hover:bg-accent/15 border-accent/30",
+  "Новая": "text-accent",
+  "Отменена": "text-muted-foreground",
+  "Заказ сформирован": "text-primary",
 };
+
+const statusTextClass = "text-xs font-medium leading-5 whitespace-nowrap";
+const summaryPillClass = "h-6 rounded-md px-2.5 py-0 text-[11px] font-medium leading-none";
 
 const normalizeRequest = (
   request: Partial<Request> & Pick<Request, "id" | "name" | "phone" | "email">,
+  fallbackIndex: number,
 ): Request => {
   const status =
     request.status === "Отменена" || request.status === "Заказ сформирован" || request.status === "Новая"
@@ -190,6 +207,25 @@ const normalizeRequest = (
     phone: request.phone,
     email: request.email,
     status,
+    createdAt:
+      typeof request.createdAt === "string" && !Number.isNaN(Date.parse(request.createdAt))
+        ? request.createdAt
+        : demoRequestTimestamps[fallbackIndex % demoRequestTimestamps.length],
+  };
+};
+
+const normalizeRequests = (items: Array<Partial<Request> & Pick<Request, "id" | "name" | "phone" | "email">>) => {
+  const requests = items.map((request, index) => normalizeRequest(request, index));
+  const migrated = items.some((request, index) => request.createdAt !== requests[index].createdAt);
+  return { requests, migrated };
+};
+
+const formatRequestCreatedAt = (iso: string) => {
+  const date = new Date(iso);
+  const formatterOptions = { timeZone: "Europe/Moscow" } as const;
+  return {
+    date: new Intl.DateTimeFormat("ru-RU", { ...formatterOptions, day: "numeric", month: "short", year: "numeric" }).format(date),
+    time: new Intl.DateTimeFormat("ru-RU", { ...formatterOptions, hour: "2-digit", minute: "2-digit" }).format(date),
   };
 };
 
@@ -222,7 +258,10 @@ const Admin = () => {
 
     try {
       const parsed = JSON.parse(stored) as Request[];
-      return Array.isArray(parsed) ? parsed.map(normalizeRequest) : initialRequests;
+      if (!Array.isArray(parsed)) return initialRequests;
+      const { requests: normalized, migrated } = normalizeRequests(parsed);
+      if (migrated) localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(normalized));
+      return normalized;
     } catch {
       return initialRequests;
     }
@@ -238,7 +277,13 @@ const Admin = () => {
 
       try {
         const parsed = JSON.parse(stored) as Request[];
-        setRequests(Array.isArray(parsed) ? parsed.map(normalizeRequest) : initialRequests);
+        if (!Array.isArray(parsed)) {
+          setRequests(initialRequests);
+          return;
+        }
+        const { requests: normalized, migrated } = normalizeRequests(parsed);
+        if (migrated) localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(normalized));
+        setRequests(normalized);
       } catch {
         setRequests(initialRequests);
       }
@@ -253,7 +298,7 @@ const Admin = () => {
   }, [orders]);
 
   const [createOrderDialogOpen, setCreateOrderDialogOpen] = useState(false);
-  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [orderDraft, setOrderDraft] = useState<{
     requestId: string;
     id: string;
@@ -285,10 +330,17 @@ const Admin = () => {
     });
   };
 
+  const deleteOrder = (id: string) => {
+    setOrders((prev) => prev.filter((order) => order.id !== id));
+  };
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Все");
   const [sortKey, setSortKey] = useState<SortKey>("none");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [requestSearch, setRequestSearch] = useState("");
+  const [requestStatusFilter, setRequestStatusFilter] = useState<RequestStatusFilter>("Все");
+  const [requestSortDir, setRequestSortDir] = useState<RequestSortDir>("desc");
 
   const updateStatus = (id: string, status: OrderStatus) => {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
@@ -408,6 +460,39 @@ const Admin = () => {
     setSortDir("desc");
   };
 
+  const visibleRequests = useMemo(() => {
+    let list = [...requests];
+
+    if (requestStatusFilter !== "Все") {
+      list = list.filter((request) => request.status === requestStatusFilter);
+    }
+
+    const q = requestSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (request) =>
+          request.name.toLowerCase().includes(q) ||
+          request.phone.toLowerCase().includes(q) ||
+          request.email.toLowerCase().includes(q),
+      );
+    }
+
+    list.sort((a, b) => {
+      const compare = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return requestSortDir === "asc" ? compare : -compare;
+    });
+
+    return list;
+  }, [requests, requestSearch, requestStatusFilter, requestSortDir]);
+
+  const resetRequestFilters = () => {
+    setRequestSearch("");
+    setRequestStatusFilter("Все");
+  };
+
+  const RequestSortIcon = () =>
+    requestSortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top bar */}
@@ -423,14 +508,14 @@ const Admin = () => {
               </span>
             </Link>
 
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-1 rounded-lg border border-border/70 bg-muted/60 p-1">
               <button
                 onClick={() => setTab("orders")}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   tab === "orders"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
                 )}
               >
                 <Package className="h-4 w-4" />
@@ -439,10 +524,10 @@ const Admin = () => {
               <button
                 onClick={() => setTab("requests")}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   tab === "requests"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
                 )}
               >
                 <Inbox className="h-4 w-4" />
@@ -479,13 +564,13 @@ const Admin = () => {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Badge variant="outline" className="font-normal">
+                <Badge variant="outline" className={summaryPillClass}>
                   Всего: {orders.length}
                 </Badge>
-                <Badge className="font-normal bg-accent text-accent-foreground hover:bg-accent">
+                <Badge className={cn(summaryPillClass, "bg-accent text-accent-foreground hover:bg-accent")}>
                   В полёте: {orders.filter((o) => o.status === "В полёте").length}
                 </Badge>
-                <Badge variant="outline" className="font-normal">
+                <Badge variant="outline" className={summaryPillClass}>
                   Показано: {visibleOrders.length}
                 </Badge>
               </div>
@@ -497,7 +582,7 @@ const Admin = () => {
                 <div className="relative flex-1 min-w-[220px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Поиск по номеру, клиенту, адресу…"
+                    placeholder="Номер, клиент или адрес"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
@@ -559,12 +644,12 @@ const Admin = () => {
             </Card>
 
             <Card className="overflow-hidden">
-              <Table>
+              <Table className="w-full [&_th]:align-middle [&_th]:px-4 [&_th]:py-3 [&_td]:align-middle [&_td]:px-4 [&_td]:py-3">
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="w-[120px]">Номер</TableHead>
-                    <TableHead className="w-[160px]">Клиент</TableHead>
-                    <TableHead className="w-[140px]">
+                    <TableHead className="whitespace-nowrap">Номер</TableHead>
+                    <TableHead className="min-w-[170px]">Клиент</TableHead>
+                    <TableHead className="whitespace-nowrap">
                       <button
                         onClick={() => toggleSort("date")}
                         className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
@@ -572,7 +657,7 @@ const Admin = () => {
                         Дата <SortIcon active={sortKey === "date"} />
                       </button>
                     </TableHead>
-                    <TableHead className="w-[110px]">
+                    <TableHead className="whitespace-nowrap">
                       <button
                         onClick={() => toggleSort("time")}
                         className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
@@ -582,8 +667,8 @@ const Admin = () => {
                     </TableHead>
                     <TableHead>Откуда</TableHead>
                     <TableHead>Куда</TableHead>
-                    <TableHead className="w-[80px]">Вес</TableHead>
-                    <TableHead className="w-[130px]">
+                    <TableHead className="whitespace-nowrap">Вес</TableHead>
+                    <TableHead className="whitespace-nowrap">
                       <button
                         onClick={() => toggleSort("price")}
                         className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
@@ -591,54 +676,71 @@ const Admin = () => {
                         Стоимость <SortIcon active={sortKey === "price"} />
                       </button>
                     </TableHead>
-                    <TableHead className="w-[140px]">Статус</TableHead>
-                    <TableHead className="w-[170px] text-right">Изменить статус</TableHead>
+                    <TableHead className="whitespace-nowrap !pl-6 !pr-4">Статус</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {visibleOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                         Ничего не найдено
                       </TableCell>
                     </TableRow>
                   ) : (
                     visibleOrders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-mono text-sm font-medium">{order.id}</TableCell>
-                        <TableCell>{order.customer}</TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                      <TableRow key={order.id} className="hover:bg-muted/30">
+                        <TableCell className="whitespace-nowrap font-mono text-sm font-medium">{order.id}</TableCell>
+                        <TableCell className="min-w-[170px] whitespace-normal text-sm leading-5 [overflow-wrap:anywhere]">
+                          {order.customer}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
                           {formatDate(order.date)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{order.deliveryTime}</TableCell>
-                        <TableCell className="text-sm">{order.fromAddress}</TableCell>
-                        <TableCell className="text-sm">{order.toAddress}</TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap text-muted-foreground">{order.deliveryTime}</TableCell>
+                        <TableCell className="whitespace-normal text-sm leading-5 [overflow-wrap:anywhere]">
+                          {order.fromAddress}
+                        </TableCell>
+                        <TableCell className="whitespace-normal text-sm leading-5 [overflow-wrap:anywhere]">
+                          {order.toAddress}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
                           {order.weightKg.toFixed(1)} кг
                         </TableCell>
-                        <TableCell className="font-bold whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap font-normal text-muted-foreground">
                           {formatPrice(order.priceRub)}
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={cn("font-normal", statusStyles[order.status])}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Select
-                            value={order.status}
-                            onValueChange={(v) => updateStatus(order.id, v as OrderStatus)}
-                          >
-                            <SelectTrigger className="w-[150px] ml-auto">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Принят">Принят</SelectItem>
-                              <SelectItem value="В полёте">В полёте</SelectItem>
-                              <SelectItem value="Доставлен">Доставлен</SelectItem>
-                              <SelectItem value="Отменен">Отменен</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <TableCell className="whitespace-nowrap">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex w-[110px] items-center justify-between gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors hover:bg-muted focus:outline-none focus:ring-0 focus:ring-offset-0"
+                              >
+                                <span className={statusStyles[order.status]}>{order.status}</span>
+                                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[156px]">
+                              {(["Принят", "В полёте", "Доставлен", "Отменен"] as OrderStatus[]).map((status) => (
+                                <DropdownMenuItem
+                                  key={status}
+                                  onSelect={() => updateStatus(order.id, status)}
+                                  className="flex items-center justify-between text-xs focus:bg-muted focus:text-foreground"
+                                >
+                                  <span className={statusStyles[status]}>{status}</span>
+                                  {order.status === status && <Check className="h-3.5 w-3.5 text-foreground" />}
+                                </DropdownMenuItem>
+                              ))}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onSelect={() => setDeleteTarget({ kind: "order", id: order.id })}
+                                className="text-xs text-destructive focus:bg-muted focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Удалить заказ
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -649,76 +751,143 @@ const Admin = () => {
           </section>
         ) : (
           <section>
-            <div className="mb-6 flex items-end justify-between">
+            <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight">Заявки</h1>
                 <p className="text-sm text-muted-foreground mt-1">
                   Новые обращения с сайта
                 </p>
               </div>
-              <Badge variant="outline" className="font-normal">
-                Всего: {requests.length}
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant="outline" className={summaryPillClass}>
+                  Всего: {requests.length}
+                </Badge>
+                <Badge className={cn(summaryPillClass, "bg-accent text-accent-foreground hover:bg-accent")}>
+                  Новых: {requests.filter((request) => request.status === "Новая").length}
+                </Badge>
+              </div>
             </div>
+
+            <Card className="p-4 mb-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Имя, телефон или email"
+                    value={requestSearch}
+                    onChange={(e) => setRequestSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Статус:</span>
+                  <Select value={requestStatusFilter} onValueChange={(value) => setRequestStatusFilter(value as RequestStatusFilter)}>
+                    <SelectTrigger className="w-[190px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Все">Все</SelectItem>
+                      <SelectItem value="Новая">Новая</SelectItem>
+                      <SelectItem value="Заказ сформирован">Заказ сформирован</SelectItem>
+                      <SelectItem value="Отменена">Отменена</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(requestSearch || requestStatusFilter !== "Все") && (
+                  <Button variant="ghost" size="sm" onClick={resetRequestFilters}>
+                    Сбросить
+                  </Button>
+                )}
+              </div>
+            </Card>
 
             <Card className="overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="w-[140px]">
+                      <button
+                        onClick={() => setRequestSortDir((direction) => (direction === "desc" ? "asc" : "desc"))}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Создана <RequestSortIcon />
+                      </button>
+                    </TableHead>
                     <TableHead>Имя</TableHead>
                     <TableHead className="w-[220px]">Телефон</TableHead>
                     <TableHead className="w-[260px]">Email</TableHead>
                     <TableHead className="w-[180px]">Статус</TableHead>
-                    <TableHead className="w-[280px] text-right">Действия</TableHead>
+                    <TableHead className="w-[220px] pr-5 text-right">
+                      <span className="sr-only">Действия</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requests.length === 0 ? (
+                  {visibleRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
-                        Заявок пока нет
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                        {requests.length === 0 ? "Заявок пока нет" : "Ничего не найдено"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    requests.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.phone}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.email}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={cn("font-normal", requestStatusStyles[r.status])}>
-                            {r.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              size="sm"
-                              onClick={() => openCreateOrderFromRequest(r)}
-                              disabled={r.status === "Заказ сформирован"}
-                            >
-                              Сформировать заказ
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => updateRequestStatus(r.id, "Отменена")}
-                              disabled={r.status === "Отменена"}
-                            >
-                              Отменить
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteRequestId(r.id)}
-                              aria-label="Удалить заявку"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    visibleRequests.map((r) => {
+                      const createdAt = formatRequestCreatedAt(r.createdAt);
+
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                            <div>{createdAt.date}</div>
+                            <div>{createdAt.time}</div>
+                          </TableCell>
+                          <TableCell className="font-medium">{r.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{r.phone}</TableCell>
+                          <TableCell className="text-muted-foreground">{r.email}</TableCell>
+                          <TableCell>
+                            <span className={cn(statusTextClass, requestStatusStyles[r.status])}>
+                              {r.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="pr-5">
+                            <div className="flex items-center justify-end gap-2">
+                              {r.status === "Новая" && (
+                                <Button size="sm" onClick={() => openCreateOrderFromRequest(r)}>
+                                  Сформировать заказ
+                                </Button>
+                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" aria-label="Действия с заявкой">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-[190px]">
+                                  {r.status === "Новая" && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onSelect={() => updateRequestStatus(r.id, "Отменена")}
+                                        className="focus:bg-muted focus:text-foreground"
+                                      >
+                                        Отменить заявку
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                    </>
+                                  )}
+                                  <DropdownMenuItem
+                                    onSelect={() => setDeleteTarget({ kind: "request", id: r.id })}
+                                    className="text-destructive focus:bg-muted focus:text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Удалить заявку
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -796,20 +965,27 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={Boolean(deleteRequestId)} onOpenChange={(open) => !open && setDeleteRequestId(null)}>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить заявку?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteTarget?.kind === "order" ? `Удалить заказ ${deleteTarget.id}?` : "Удалить заявку?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Это действие нельзя отменить. Заявка будет удалена из списка.
+              {deleteTarget?.kind === "order"
+                ? "Это действие нельзя отменить. Заказ будет удалён из списка."
+                : "Это действие нельзя отменить. Заявка будет удалена из списка."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отменить</AlertDialogCancel>
+            <AlertDialogCancel className="focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              Отменить
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (deleteRequestId) deleteRequest(deleteRequestId);
-                setDeleteRequestId(null);
+                if (deleteTarget?.kind === "order") deleteOrder(deleteTarget.id);
+                if (deleteTarget?.kind === "request") deleteRequest(deleteTarget.id);
+                setDeleteTarget(null);
               }}
             >
               Удалить

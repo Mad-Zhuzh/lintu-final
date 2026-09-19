@@ -141,6 +141,7 @@ const Index = () => {
       phone: form.phone.trim(),
       email: form.email.trim(),
       status: "Новая" as RequestStatus,
+      createdAt: new Date().toISOString(),
     };
 
     const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
