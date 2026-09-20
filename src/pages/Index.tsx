@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { Button } from "@/components/ui/button";
@@ -26,13 +26,11 @@ import {
   Star,
   Phone,
   Mail,
-  Send,
   Menu,
   X,
   Search,
   Plane,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import droneHero from "@/assets/drone-hero.png";
 
@@ -104,15 +102,51 @@ const reviews = [
   },
 ];
 
+type RequestForm = { name: string; phone: string; email: string };
+type RequestFormField = keyof RequestForm;
+type RequestFormErrors = Partial<Record<RequestFormField, string>>;
+
 const Index = () => {
-  const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [gameDialogOpen, setGameDialogOpen] = useState(false);
   const [gameFrameKey, setGameFrameKey] = useState(0);
-  const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [form, setForm] = useState<RequestForm>({ name: "", phone: "", email: "" });
+  const [formErrors, setFormErrors] = useState<RequestFormErrors>({});
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formSuccessDialogOpen, setFormSuccessDialogOpen] = useState(false);
+  const [formSubmitError, setFormSubmitError] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingResult, setTrackingResult] = useState<null | { status: string; time: string }>(null);
+  const [heroCtaVisible, setHeroCtaVisible] = useState(true);
+  const [contactFormFullyVisible, setContactFormFullyVisible] = useState(false);
+  const heroCtaRef = useRef<HTMLButtonElement | null>(null);
+  const headerCtaRef = useRef<HTMLButtonElement | null>(null);
+  const contactFormRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    const heroObserver = new IntersectionObserver(
+      ([entry]) => {
+        setHeroCtaVisible(entry.isIntersecting);
+      },
+      { rootMargin: "-72px 0px 0px 0px", threshold: 0 },
+    );
+
+    const contactObserver = new IntersectionObserver(
+      ([entry]) => setContactFormFullyVisible(entry.intersectionRatio >= 0.99),
+      { threshold: [0.99, 1] },
+    );
+
+    if (heroCtaRef.current) heroObserver.observe(heroCtaRef.current);
+    if (contactFormRef.current) contactObserver.observe(contactFormRef.current);
+
+    return () => {
+      heroObserver.disconnect();
+      contactObserver.disconnect();
+    };
+  }, []);
+
+  const showHeaderCta = !heroCtaVisible && !contactFormFullyVisible;
 
   const formatPhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -130,8 +164,42 @@ const Index = () => {
     return formatted;
   };
 
+  const validateFormField = (field: RequestFormField, value: string) => {
+    if (field === "name") return value.trim() ? undefined : "Введите имя";
+    if (field === "phone") {
+      const digits = value.replace(/\D/g, "");
+      return digits.length === 11 && digits.startsWith("7") ? undefined : "Введите номер телефона в формате +7 (***) ***-**-**";
+    }
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : "Введите email";
+  };
+
+  const updateFormField = (field: RequestFormField, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setFormSubmitError(false);
+    setFormErrors((current) => {
+      if (!current[field]) return current;
+      const error = validateFormField(field, value);
+      const next = { ...current };
+      if (error) next[field] = error;
+      else delete next[field];
+      return next;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors = (Object.keys(form) as RequestFormField[]).reduce<RequestFormErrors>((current, field) => {
+      const error = validateFormField(field, form[field]);
+      if (error) current[field] = error;
+      return current;
+    }, {});
+
+    setFormErrors(errors);
+    setFormSubmitError(false);
+    if (Object.keys(errors).length > 0) return;
+
+    setFormSubmitting(true);
 
     const { error } = await supabase.from("requests").insert({
       name: form.name.trim(),
@@ -140,19 +208,16 @@ const Index = () => {
     });
 
     if (error) {
-      toast({
-        title: "Не удалось отправить заявку",
-        description: "Попробуйте ещё раз немного позже.",
-        variant: "destructive",
-      });
+      console.error("Unable to submit request", error);
+      setFormSubmitError(true);
+      setFormSubmitting(false);
       return;
     }
 
-    toast({
-      title: "Заявка отправлена!",
-      description: "Мы свяжемся с вами в ближайшее время.",
-    });
+    setFormSubmitting(false);
     setForm({ name: "", phone: "", email: "" });
+    setFormErrors({});
+    setFormSuccessDialogOpen(true);
   };
 
   const handleOpenGamePreview = () => {
@@ -175,14 +240,27 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#fafbfc] text-foreground">
       {/* ===== NAVIGATION ===== */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <a href="#" className="text-2xl font-bold tracking-tight text-primary">
+      <header className="public-header fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="container mx-auto grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4">
+          <a href="#" className="justify-self-start text-2xl font-bold tracking-tight text-primary">
             Lintu
           </a>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-6">
+          <div className="hidden md:block">
+            <Button
+              ref={headerCtaRef}
+              size="lg"
+              aria-hidden={!showHeaderCta}
+              tabIndex={showHeaderCta ? 0 : -1}
+              className={`text-base px-8 py-6 shadow-lg transition-[opacity,transform] duration-200 ease-out ${showHeaderCta ? "translate-y-0 opacity-100" : contactFormFullyVisible ? "-translate-y-2 opacity-0 pointer-events-none" : "translate-y-2 opacity-0 pointer-events-none"}`}
+              onClick={() => scrollTo("#contact")}
+            >
+              Заказать доставку
+            </Button>
+          </div>
+
+          <nav className="hidden md:flex justify-self-end items-center gap-6">
             {navLinks.map((l) => (
               <button
                 key={l.href}
@@ -195,14 +273,11 @@ const Index = () => {
             <Button variant="ghost" size="sm" onClick={() => setTrackingDialogOpen(true)}>
               Отследить заказ
             </Button>
-            <Button size="sm" onClick={() => scrollTo("#contact")}>
-              Вызвать дрон
-            </Button>
           </nav>
 
           {/* Mobile toggle */}
           <button
-            className="md:hidden p-2 text-foreground"
+            className="md:hidden justify-self-end p-2 text-foreground"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Меню"
           >
@@ -267,7 +342,7 @@ const Index = () => {
             </p>
           </ScrollReveal>
           <ScrollReveal delay={3}>
-            <Button size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
+            <Button ref={heroCtaRef} size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
               Заказать доставку
             </Button>
           </ScrollReveal>
@@ -407,47 +482,69 @@ const Index = () => {
             <p className="text-center text-muted-foreground mb-10">
               Мы свяжемся с вами и обсудим детали доставки
             </p>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="name">Имя</Label>
-                <Input
-                  id="name"
-                  placeholder="Ваше имя"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Телефон</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+7 (___) ___-__-__"
-                  required
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="mail@example.com"
-                  required
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <Button type="submit" size="lg" className="w-full">
-                <Send className="mr-2 h-4 w-4" />
-                Отправить заявку
-              </Button>
+            <form ref={contactFormRef} noValidate onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Имя</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ваше имя"
+                    required
+                    value={form.name}
+                    aria-invalid={Boolean(formErrors.name)}
+                    aria-describedby={formErrors.name ? "name-error" : undefined}
+                    className={formErrors.name ? "border-destructive focus-visible:ring-destructive" : undefined}
+                    onChange={(e) => updateFormField("name", e.target.value)}
+                  />
+                  {formErrors.name && <p id="name-error" className="text-sm text-destructive">{formErrors.name}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Телефон</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+7 (___) ___-__-__"
+                    required
+                    value={form.phone}
+                    aria-invalid={Boolean(formErrors.phone)}
+                    aria-describedby={formErrors.phone ? "phone-error" : undefined}
+                    className={formErrors.phone ? "border-destructive focus-visible:ring-destructive" : undefined}
+                    onChange={(e) => updateFormField("phone", formatPhoneNumber(e.target.value))}
+                  />
+                  {formErrors.phone && <p id="phone-error" className="text-sm text-destructive">{formErrors.phone}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="mail@example.com"
+                    required
+                    value={form.email}
+                    aria-invalid={Boolean(formErrors.email)}
+                    aria-describedby={formErrors.email ? "email-error" : undefined}
+                    className={formErrors.email ? "border-destructive focus-visible:ring-destructive" : undefined}
+                    onChange={(e) => updateFormField("email", e.target.value)}
+                  />
+                  {formErrors.email && <p id="email-error" className="text-sm text-destructive">{formErrors.email}</p>}
+                </div>
+                {formSubmitError && <p role="alert" className="text-sm text-destructive">Не удалось отправить заявку. Попробуйте ещё раз.</p>}
+                <Button type="submit" size="lg" className="w-full" disabled={formSubmitting}>{formSubmitting ? "Отправляем…" : "Отправить заявку"}</Button>
             </form>
           </div>
         </ScrollReveal>
       </section>
+
+      <Dialog open={formSuccessDialogOpen} onOpenChange={setFormSuccessDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Заявка отправлена <span className="text-primary">✓</span></DialogTitle>
+            <DialogDescription>Мы свяжемся с вами в ближайшее время.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => setFormSuccessDialogOpen(false)}>Закрыть</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
@@ -499,7 +596,7 @@ const Index = () => {
 
       <Dialog open={gameDialogOpen} onOpenChange={handleGameDialogChange}>
         <DialogPortal>
-          <DialogOverlay />
+          <DialogOverlay className="!bg-white !opacity-100 !backdrop-blur-none" />
           <div className="fixed inset-0 z-50 flex items-stretch justify-center px-4 py-2 sm:py-8">
             <div className="relative flex w-full max-w-[440px] flex-col">
               {/* Крестик над игрой на мобильных — закреплён в потоке */}
@@ -541,7 +638,7 @@ const Index = () => {
               <div className="shrink-0 pt-2 text-center sm:pt-3">
                 <button
                   type="button"
-                  className="text-sm text-muted-foreground transition-colors [text-shadow:0_0_1px_rgb(255_255_255),0_0_4px_rgb(255_255_255/0.95),0_0_10px_rgb(255_255_255/0.85),0_0_20px_rgb(255_255_255/0.55)] hover:text-primary hover:underline"
+                  className="text-sm text-foreground transition-colors [text-shadow:0_0_1px_rgb(255_255_255),0_0_4px_rgb(255_255_255/0.95),0_0_10px_rgb(255_255_255/0.85),0_0_20px_rgb(255_255_255/0.55)] hover:text-primary hover:underline"
                   onClick={() => {
                     handleGameDialogChange(false);
                     setTimeout(() => scrollTo("#contact"), 0);
@@ -558,11 +655,11 @@ const Index = () => {
       {/* ===== FOOTER ===== */}
       <footer className="border-t border-border bg-card py-12 px-4">
         <div className="container mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_auto_auto] md:gap-x-16">
             {/* Brand */}
-            <div>
-              <p className="text-2xl font-bold text-primary mb-3">Lintu</p>
-              <p className="text-sm text-muted-foreground">
+            <div className="md:flex md:h-full md:flex-col">
+              <p className="text-4xl font-bold text-primary mb-3">Lintu</p>
+              <p className="text-sm text-muted-foreground md:mt-auto">
                 Доставка грузов дронами нового поколения.
               </p>
             </div>

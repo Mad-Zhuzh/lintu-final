@@ -97,6 +97,10 @@
   }
 }
 
+body[data-scroll-locked] .public-header {
+  padding-right: var(--removed-body-scroll-bar-size, 0px);
+}
+
 /* Scroll animations */
 .animate-on-scroll {
   opacity: 0;
