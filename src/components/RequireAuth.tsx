@@ -39,6 +39,11 @@ const RequireAuth = ({ children }: Props) => {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
 
+  const role = session.user.app_metadata?.role;
+  if (role !== "admin") {
+    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+
   return <>{children}</>;
 };
 

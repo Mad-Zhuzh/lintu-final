@@ -33,6 +33,7 @@ import {
   Plane,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import droneHero from "@/assets/drone-hero.png";
 
 const navLinks = [
@@ -103,9 +104,6 @@ const reviews = [
   },
 ];
 
-const REQUESTS_STORAGE_KEY = "lintu_requests";
-type RequestStatus = "Новая" | "Отменена" | "Заказ сформирован";
-
 const Index = () => {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -132,21 +130,23 @@ const Index = () => {
     return formatted;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newRequest = {
-      id: crypto.randomUUID(),
+    const { error } = await supabase.from("requests").insert({
       name: form.name.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
-      status: "Новая" as RequestStatus,
-      createdAt: new Date().toISOString(),
-    };
+    });
 
-    const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
-    const requests = stored ? (JSON.parse(stored) as typeof newRequest[]) : [];
-    localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify([newRequest, ...requests]));
+    if (error) {
+      toast({
+        title: "Не удалось отправить заявку",
+        description: "Попробуйте ещё раз немного позже.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     toast({
       title: "Заявка отправлена!",

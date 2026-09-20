@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -8,44 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_EMAIL = "admin@lintu.ru";
-const ADMIN_PASSWORD = "Lintu_demo_2026";
-
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [email] = useState(ADMIN_EMAIL);
-  const [password] = useState(ADMIN_PASSWORD);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate("/admin", { replace: true });
+      if (data.session?.user.app_metadata?.role === "admin" && !location.state?.demo) navigate("/admin", { replace: true });
     });
-  }, [navigate]);
+  }, [location.state, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Try sign in
-    let { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    // If user doesn't exist yet, auto-create the admin account on first login
-    if (error && /invalid login credentials/i.test(error.message)) {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}admin`,
-        },
+    if (!error && data.user?.app_metadata?.role !== "admin") {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast({
+        title: "Нет доступа",
+        description: "Для входа через форму нужна учётная запись администратора.",
+        variant: "destructive",
       });
-      if (!signUpError) {
-        const retry = await supabase.auth.signInWithPassword({ email, password });
-        error = retry.error;
-      } else {
-        error = signUpError;
-      }
+      return;
     }
 
     setLoading(false);
@@ -89,7 +80,7 @@ const AdminLogin = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">Вход в админ-панель</h1>
             <p className="text-sm text-muted-foreground mt-1">
-            Демо-доступ уже заполнен. Нажмите «Войти», чтобы открыть админ-панель.
+            Войдите под учётной записью администратора или посмотрите интерфейс в демо-режиме.
             </p>
           </div>
 
@@ -102,7 +93,7 @@ const AdminLogin = () => {
                 autoComplete="email"
                 required
                 value={email}
-                readOnly
+                onChange={(event) => setEmail(event.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -113,7 +104,7 @@ const AdminLogin = () => {
                 autoComplete="current-password"
                 required
                 value={password}
-                readOnly
+                onChange={(event) => setPassword(event.target.value)}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
@@ -125,6 +116,9 @@ const AdminLogin = () => {
               ) : (
                 "Войти"
               )}
+            </Button>
+            <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={() => navigate("/admin/demo")}>
+              Посмотреть демо
             </Button>
           </form>
         </Card>
