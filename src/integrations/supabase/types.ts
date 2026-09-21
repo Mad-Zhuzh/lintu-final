@@ -11,8 +11,8 @@ export type Database = {
         Relationships: [{ foreignKeyName: "orders_request_id_fkey"; columns: ["request_id"]; isOneToOne: true; referencedRelation: "requests"; referencedColumns: ["id"] }];
       };
       requests: {
-        Row: { created_at: string; email: string; id: string; name: string; phone: string; status: Database["public"]["Enums"]["request_status"] };
-        Insert: { created_at?: string; email: string; id?: string; name: string; phone: string; status?: Database["public"]["Enums"]["request_status"] };
+        Row: { created_at: string; email: string | null; id: string; name: string; phone: string; status: Database["public"]["Enums"]["request_status"] };
+        Insert: { created_at?: string; email?: string | null; id?: string; name: string; phone: string; status?: Database["public"]["Enums"]["request_status"] };
         Update: Partial<Database["public"]["Tables"]["requests"]["Insert"]>;
         Relationships: [];
       };

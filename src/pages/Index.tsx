@@ -110,6 +110,7 @@ const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
   const [gameDialogOpen, setGameDialogOpen] = useState(false);
+  const [gameWon, setGameWon] = useState(false);
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const [form, setForm] = useState<RequestForm>({ name: "", phone: "", email: "" });
   const [formErrors, setFormErrors] = useState<RequestFormErrors>({});
@@ -123,6 +124,7 @@ const Index = () => {
   const heroCtaRef = useRef<HTMLButtonElement | null>(null);
   const headerCtaRef = useRef<HTMLButtonElement | null>(null);
   const contactFormRef = useRef<HTMLFormElement | null>(null);
+  const gameIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     const heroObserver = new IntersectionObserver(
@@ -170,7 +172,10 @@ const Index = () => {
       const digits = value.replace(/\D/g, "");
       return digits.length === 11 && digits.startsWith("7") ? undefined : "Введите номер телефона в формате +7 (***) ***-**-**";
     }
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : "Введите email";
+    if (!value.trim()) return undefined;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+      ? undefined
+      : "Введите email в формате name@example.com";
   };
 
   const updateFormField = (field: RequestFormField, value: string) => {
@@ -204,7 +209,7 @@ const Index = () => {
     const { error } = await supabase.from("requests").insert({
       name: form.name.trim(),
       phone: form.phone.trim(),
-      email: form.email.trim(),
+      email: form.email.trim() || null,
     });
 
     if (error) {
@@ -221,21 +226,51 @@ const Index = () => {
   };
 
   const handleOpenGamePreview = () => {
+    setGameWon(false);
     setGameDialogOpen(true);
   };
 
   const handleGameDialogChange = (open: boolean) => {
     setGameDialogOpen(open);
-    if (!open) {
-      // Force iframe remount on close to reset game state.
-      setGameFrameKey((prev) => prev + 1);
+    if (open) {
+      setGameWon(false);
+      return;
     }
+
+    setGameWon(false);
+    // Force iframe remount on close to reset game state.
+    setGameFrameKey((prev) => prev + 1);
   };
 
   const scrollTo = (href: string) => {
     setMobileMenuOpen(false);
     document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const closeGameAndScrollToOrderForm = () => {
+    handleGameDialogChange(false);
+    window.setTimeout(() => scrollTo("#contact"), 0);
+  };
+
+  useEffect(() => {
+    const handleGameMessage = (event: MessageEvent) => {
+      if (event.source !== gameIframeRef.current?.contentWindow) {
+        return;
+      }
+
+      if (event.data?.type === "lintu:game-won") {
+        setGameWon(true);
+        return;
+      }
+
+      if (event.data?.type === "lintu:open-order-form") {
+        closeGameAndScrollToOrderForm();
+      }
+    };
+
+    window.addEventListener("message", handleGameMessage);
+    return () => window.removeEventListener("message", handleGameMessage);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#fafbfc] text-foreground">
@@ -342,9 +377,18 @@ const Index = () => {
             </p>
           </ScrollReveal>
           <ScrollReveal delay={3}>
-            <Button ref={heroCtaRef} size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
-              Заказать доставку
-            </Button>
+            <div className="flex flex-col items-center gap-4">
+              <Button ref={heroCtaRef} size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
+                Заказать доставку
+              </Button>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
+                onClick={() => scrollTo("#game-preview")}
+              >
+                Или попробуйте доставить заказ сами
+              </button>
+            </div>
           </ScrollReveal>
         </div>
       </section>
@@ -434,7 +478,11 @@ const Index = () => {
               </div>
             </div>
             <div className="mt-0 flex justify-center">
-              <Button size="lg" className="min-w-36" onClick={handleOpenGamePreview}>
+              <Button
+                size="lg"
+                className="min-w-36 bg-accent/10 text-base font-medium text-accent hover:bg-accent hover:text-accent-foreground hover:brightness-100"
+                onClick={handleOpenGamePreview}
+              >
                 Играть
               </Button>
             </div>
@@ -484,7 +532,7 @@ const Index = () => {
             </p>
             <form ref={contactFormRef} noValidate onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Имя</Label>
+                  <Label htmlFor="name">Имя *</Label>
                   <Input
                     id="name"
                     placeholder="Ваше имя"
@@ -498,7 +546,7 @@ const Index = () => {
                   {formErrors.name && <p id="name-error" className="text-sm text-destructive">{formErrors.name}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Телефон</Label>
+                  <Label htmlFor="phone">Телефон *</Label>
                   <Input
                     id="phone"
                     type="tel"
@@ -518,7 +566,6 @@ const Index = () => {
                     id="email"
                     type="email"
                     placeholder="mail@example.com"
-                    required
                     value={form.email}
                     aria-invalid={Boolean(formErrors.email)}
                     aria-describedby={formErrors.email ? "email-error" : undefined}
@@ -626,6 +673,7 @@ const Index = () => {
               {/* Игра — заполняет доступное место */}
               <div className="min-h-0 w-full flex-1">
                 <iframe
+                  ref={gameIframeRef}
                   key={gameFrameKey}
                   src="https://mad-zhuzh.github.io/Lintu-Delivery-Game/?embed=true"
                   title="Мини-игра Lintu Delivery"
@@ -635,18 +683,17 @@ const Index = () => {
               </div>
 
               {/* Ссылка под игрой — без подложки, лёгкий текстовый ореол для читаемости на тёмном фоне */}
-              <div className="shrink-0 pt-2 text-center sm:pt-3">
-                <button
-                  type="button"
-                  className="text-sm text-foreground transition-colors [text-shadow:0_0_1px_rgb(255_255_255),0_0_4px_rgb(255_255_255/0.95),0_0_10px_rgb(255_255_255/0.85),0_0_20px_rgb(255_255_255/0.55)] hover:text-primary hover:underline"
-                  onClick={() => {
-                    handleGameDialogChange(false);
-                    setTimeout(() => scrollTo("#contact"), 0);
-                  }}
-                >
-                  Оформить доставку →
-                </button>
-              </div>
+              {!gameWon && (
+                <div className="shrink-0 pt-2 text-center sm:pt-3">
+                  <button
+                    type="button"
+                    className="text-sm text-foreground transition-colors [text-shadow:0_0_1px_rgb(255_255_255),0_0_4px_rgb(255_255_255/0.95),0_0_10px_rgb(255_255_255/0.85),0_0_20px_rgb(255_255_255/0.55)] hover:text-primary hover:underline"
+                    onClick={closeGameAndScrollToOrderForm}
+                  >
+                    Оформить доставку →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </DialogPortal>
