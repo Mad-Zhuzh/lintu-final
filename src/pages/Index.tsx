@@ -32,7 +32,6 @@ import {
   Plane,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import droneHero from "@/assets/drone-hero.png";
 
 const navLinks = [
   { label: "Преимущества", href: "#advantages" },
@@ -275,9 +274,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#fafbfc] text-foreground">
       {/* ===== NAVIGATION ===== */}
-      <header className="public-header fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+      <header className="public-header fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/30">
         <div className="container mx-auto grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4">
-          <a href="#" className="justify-self-start text-2xl font-bold tracking-tight text-primary">
+          <a href="#" className="justify-self-start text-3xl font-bold tracking-tight text-primary">
             Lintu
           </a>
 
@@ -351,26 +350,31 @@ const Index = () => {
       </header>
 
       {/* ===== HERO ===== */}
-      <section className="bg-[#fafbfc] pt-20 pb-24 md:pt-24 md:pb-32 px-4 overflow-hidden">
-        <div className="container mx-auto text-center max-w-3xl">
-          <ScrollReveal>
-            <img
-              src={droneHero}
-              alt="Дрон в полёте"
-              width={400}
-              height={300}
-              className="mx-auto -mb-3 w-52 md:w-72 object-contain select-none"
-            />
-          </ScrollReveal>
+      <section
+        className="relative mt-16 pt-4 pb-24 md:min-h-[calc(100svh-4rem)] md:py-8 md:flex md:items-center px-4 overflow-hidden bg-cover bg-top bg-no-repeat"
+        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/hero-background.png)` }}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[180px]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.7) 20%, rgba(255, 255, 255, 0.25) 55%, rgba(255, 255, 255, 0) 100%)",
+          }}
+        />
+        <div className="relative z-10 container w-full mx-auto translate-y-5 text-center max-w-5xl">
           <ScrollReveal delay={1}>
-            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight mb-8">
-              Доставка дронами: {" "}
-              <span className="text-primary">быстро</span> и{" "}
-              <span className="text-accent">удобно</span>
+            <h1 className="hero-title mb-8 font-extrabold tracking-tight leading-none">
+              <span className="block bg-gradient-to-br from-[#111216] to-[#49413B] bg-clip-text text-[clamp(2.5rem,5.5vw,4.75rem)] text-transparent">
+                Доставка дронами
+              </span>
+              <span className="mt-3 block bg-gradient-to-br from-[#eb7000] to-accent bg-clip-text pb-1 text-[clamp(2rem,3vw,2.7rem)] leading-[1.15] text-transparent">
+                Быстро и удобно
+              </span>
             </h1>
           </ScrollReveal>
           <ScrollReveal delay={2}>
-            <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+            <p className="relative isolate mb-24 max-w-2xl mx-auto text-lg text-foreground/75 before:pointer-events-none before:absolute before:-inset-x-12 before:-inset-y-8 before:-z-10 before:content-[''] before:bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.8)_0%,rgba(255,255,255,0.42)_46%,transparent_76%)] md:text-xl">
               Lintu — доставка для тех, кто ценит скорость и не хочет ждать.
               <br />
               Дроны привозят посылки напрямую — быстрее, чем курьеры.
@@ -383,10 +387,10 @@ const Index = () => {
               </Button>
               <button
                 type="button"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
+                className="text-base text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
                 onClick={() => scrollTo("#game-preview")}
               >
-                Или попробуйте доставить заказ сами
+                ... или попробуйте доставить заказ сами →
               </button>
             </div>
           </ScrollReveal>
@@ -394,10 +398,10 @@ const Index = () => {
       </section>
 
       {/* ===== ADVANTAGES ===== */}
-      <section id="advantages" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
+      <section id="advantages" className="py-24 md:py-32 px-4 bg-[linear-gradient(to_bottom,#fafbfc_0%,#EDF5FF_50%,#fafbfc_100%)]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Почему Lintu?</h2>
+            <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Почему Lintu?</h2>
             <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
               Мы объединяем передовые технологии и заботу о клиентах
             </p>
@@ -421,10 +425,10 @@ const Index = () => {
       </section>
 
       {/* ===== HOW IT WORKS ===== */}
-      <section id="how" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
+      <section id="how" className="py-24 md:py-32 px-4 bg-[linear-gradient(to_bottom,#fafbfc_0%,#F1F7FD_50%,#fafbfc_100%)]">
         <div className="container mx-auto max-w-4xl">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Как это работает</h2>
+            <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Как это работает</h2>
             <p className="text-center text-muted-foreground mb-14 max-w-xl mx-auto">
               Три простых шага до получения посылки
             </p>
@@ -454,7 +458,7 @@ const Index = () => {
       <section id="game-preview" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Мини-игра: доставка дроном</h2>
+            <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Мини-игра: доставка дроном</h2>
             <p className="text-center text-muted-foreground mb-0 max-w-2xl mx-auto">
               Попробуйте, как работает доставка в формате игры. Управляйте дроном, облетайте препятствия и
               доставьте заказ до точки назначения.
@@ -491,10 +495,10 @@ const Index = () => {
       </section>
 
       {/* ===== REVIEWS ===== */}
-      <section id="reviews" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
+      <section id="reviews" className="py-24 md:py-32 px-4 bg-[linear-gradient(to_bottom,#fafbfc_0%,#F4F8FC_50%,#fafbfc_100%)]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Отзывы клиентов</h2>
+            <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Отзывы клиентов</h2>
             <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
               Нам доверяют тысячи пользователей
             </p>
@@ -526,7 +530,7 @@ const Index = () => {
       <section id="contact" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <ScrollReveal>
           <div className="container mx-auto max-w-lg">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Оставьте заявку</h2>
+            <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Оставьте заявку</h2>
             <p className="text-center text-muted-foreground mb-10">
               Мы свяжемся с вами и обсудим детали доставки
             </p>

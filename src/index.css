@@ -1,6 +1,19 @@
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .hero-title {
+    font-family: "Exo 2", sans-serif;
+  }
+
+  .section-title {
+    font-family: "Exo 2", sans-serif;
+    font-weight: 700;
+  }
+}
 
 @layer base {
   :root {
