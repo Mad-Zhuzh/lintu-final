@@ -644,7 +644,7 @@ const Index = () => {
       <Dialog open={formSuccessDialogOpen} onOpenChange={setFormSuccessDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Заявка отправлена <span className="text-primary">✓</span></DialogTitle>
+            <DialogTitle className="section-title text-2xl">Заявка отправлена <span className="text-primary">✓</span></DialogTitle>
             <DialogDescription>Мы свяжемся с вами в ближайшее время.</DialogDescription>
           </DialogHeader>
           <div className="flex justify-end">
@@ -656,7 +656,7 @@ const Index = () => {
       <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-2xl md:text-3xl">Отследить заказ</DialogTitle>
+            <DialogTitle className="section-title text-2xl md:text-3xl">Отследить заказ</DialogTitle>
             <DialogDescription>Введите номер заказа, чтобы узнать его статус</DialogDescription>
           </DialogHeader>
 
