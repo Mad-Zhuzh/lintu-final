@@ -435,7 +435,7 @@ const Index = () => {
             </p>
           </ScrollReveal>
           <ScrollReveal delay={3}>
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex translate-y-2.5 flex-col items-center gap-4">
               <Button ref={heroCtaRef} size="lg" className="text-base px-8 py-6 shadow-lg" onClick={() => scrollTo("#contact")}>
                 Заказать доставку
               </Button>
