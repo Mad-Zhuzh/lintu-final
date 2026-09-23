@@ -422,7 +422,7 @@ const Index = () => {
               <span className="block bg-gradient-to-br from-[#111216] to-[#49413B] bg-clip-text text-[clamp(2.5rem,5.5vw,4.75rem)] text-transparent">
                 Доставка дронами
               </span>
-              <span className="mt-3 block bg-gradient-to-br from-[#eb7000] to-accent bg-clip-text pb-1 text-[clamp(2rem,3vw,2.7rem)] leading-[1.15] text-transparent">
+              <span className="mt-3 block bg-gradient-to-br from-[#e88932] to-[#ffaf5f] bg-clip-text pb-1 text-[clamp(2rem,3vw,2.7rem)] leading-[1.15] text-transparent">
                 Быстро и удобно
               </span>
             </h1>
