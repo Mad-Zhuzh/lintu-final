@@ -479,7 +479,7 @@ const Index = () => {
       </section>
 
       {/* ===== HOW IT WORKS ===== */}
-      <section id="how" className="py-24 md:py-32 px-4 bg-[linear-gradient(to_bottom,#fafbfc_0%,#F1F7FD_50%,#fafbfc_100%)]">
+      <section id="how" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-4xl">
           <ScrollReveal>
             <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Как это работает</h2>
@@ -551,7 +551,7 @@ const Index = () => {
       </section>
 
       {/* ===== REVIEWS ===== */}
-      <section id="reviews" className="py-24 md:py-32 px-4 bg-[linear-gradient(to_bottom,#fafbfc_0%,#F4F8FC_50%,#fafbfc_100%)]">
+      <section id="reviews" className="py-24 md:py-32 px-4 bg-[#fafbfc]">
         <div className="container mx-auto max-w-5xl">
           <ScrollReveal>
             <h2 className="section-title text-3xl md:text-4xl text-center mb-4">Отзывы клиентов</h2>
