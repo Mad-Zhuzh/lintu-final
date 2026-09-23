@@ -13,6 +13,10 @@
     font-family: "Exo 2", sans-serif;
     font-weight: 700;
   }
+
+  .hero-background {
+    background-image: var(--hero-background-ultrawide);
+  }
 }
 
 @layer base {

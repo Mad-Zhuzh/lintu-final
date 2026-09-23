@@ -52,8 +52,8 @@ const advantages = [
   },
   {
     icon: Banknote,
-    title: "Выгодная стоимость",
-    desc: "Дешевле традиционных курьеров до 40%. Прозрачное ценообразование.",
+    title: "Выгодная цена",
+    desc: "Дешевле обычных курьеров до 40%. Прозрачное ценообразование.",
   },
   {
     icon: Leaf,
@@ -105,6 +105,12 @@ type RequestForm = { name: string; phone: string; email: string };
 type RequestFormField = keyof RequestForm;
 type RequestFormErrors = Partial<Record<RequestFormField, string>>;
 
+const heroBackgroundMetrics = {
+  width: 1915,
+  height: 821,
+  horizonY: 614,
+};
+
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
@@ -120,6 +126,8 @@ const Index = () => {
   const [trackingResult, setTrackingResult] = useState<null | { status: string; time: string }>(null);
   const [heroCtaVisible, setHeroCtaVisible] = useState(true);
   const [contactFormFullyVisible, setContactFormFullyVisible] = useState(false);
+  const [heroBackgroundStyle, setHeroBackgroundStyle] = useState<React.CSSProperties>({});
+  const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroCtaRef = useRef<HTMLButtonElement | null>(null);
   const headerCtaRef = useRef<HTMLButtonElement | null>(null);
   const contactFormRef = useRef<HTMLFormElement | null>(null);
@@ -144,6 +152,46 @@ const Index = () => {
     return () => {
       heroObserver.disconnect();
       contactObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateHeroBackground = () => {
+      const hero = heroSectionRef.current;
+      const heroCta = heroCtaRef.current;
+
+      if (window.innerWidth < 1280 || !hero || !heroCta) {
+        setHeroBackgroundStyle({});
+        return;
+      }
+
+      const heroRect = hero.getBoundingClientRect();
+      const ctaRect = heroCta.getBoundingClientRect();
+      const ctaCenterY = ctaRect.top - heroRect.top + ctaRect.height / 2;
+      const coverScale = Math.max(
+        heroRect.width / heroBackgroundMetrics.width,
+        heroRect.height / heroBackgroundMetrics.height,
+      );
+      const ctaAlignedScale = ctaCenterY / heroBackgroundMetrics.horizonY;
+      const scale = Math.max(coverScale, ctaAlignedScale);
+      const scaledHeight = heroBackgroundMetrics.height * scale;
+      const desiredTop = ctaCenterY - heroBackgroundMetrics.horizonY * scale;
+      const top = Math.min(0, Math.max(heroRect.height - scaledHeight, desiredTop));
+
+      setHeroBackgroundStyle({
+        backgroundSize: `${heroBackgroundMetrics.width * scale}px ${scaledHeight}px`,
+        backgroundPosition: `center ${top}px`,
+      });
+    };
+
+    const animationFrame = window.requestAnimationFrame(updateHeroBackground);
+    const settledLayoutTimeout = window.setTimeout(updateHeroBackground, 700);
+    window.addEventListener("resize", updateHeroBackground);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(settledLayoutTimeout);
+      window.removeEventListener("resize", updateHeroBackground);
     };
   }, []);
 
@@ -275,26 +323,27 @@ const Index = () => {
     <div className="min-h-screen bg-[#fafbfc] text-foreground">
       {/* ===== NAVIGATION ===== */}
       <header className="public-header fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/30">
-        <div className="container mx-auto grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4">
-          <a href="#" className="justify-self-start text-3xl font-bold tracking-tight text-primary">
+        <div className="relative flex h-16 w-full items-center px-4 sm:px-6 lg:px-6 xl:px-[clamp(24px,4vw,80px)]">
+          <a href="#" className="text-3xl font-bold tracking-tight text-primary">
             Lintu
           </a>
 
           {/* Desktop nav */}
-          <div className="hidden md:block">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <Button
               ref={headerCtaRef}
               size="lg"
               aria-hidden={!showHeaderCta}
               tabIndex={showHeaderCta ? 0 : -1}
-              className={`text-base px-8 py-6 shadow-lg transition-[opacity,transform] duration-200 ease-out ${showHeaderCta ? "translate-y-0 opacity-100" : contactFormFullyVisible ? "-translate-y-2 opacity-0 pointer-events-none" : "translate-y-2 opacity-0 pointer-events-none"}`}
+              className={`px-4 py-6 text-sm shadow-lg transition-[opacity,transform] duration-200 ease-out sm:px-5 sm:text-base lg:px-2 xl:px-8 ${showHeaderCta ? "translate-y-0 opacity-100" : contactFormFullyVisible ? "-translate-y-2 opacity-0 pointer-events-none" : "translate-y-2 opacity-0 pointer-events-none"}`}
               onClick={() => scrollTo("#contact")}
             >
-              Заказать доставку
+              <span className="xl:hidden">Заказать</span>
+              <span className="hidden xl:inline">Заказать доставку</span>
             </Button>
           </div>
 
-          <nav className="hidden md:flex justify-self-end items-center gap-6">
+          <nav className="ml-auto hidden shrink-0 items-center gap-2 whitespace-nowrap lg:flex xl:gap-6">
             {navLinks.map((l) => (
               <button
                 key={l.href}
@@ -304,14 +353,14 @@ const Index = () => {
                 {l.label}
               </button>
             ))}
-            <Button variant="ghost" size="sm" onClick={() => setTrackingDialogOpen(true)}>
+            <Button variant="ghost" size="sm" className="lg:px-1 xl:px-3" onClick={() => setTrackingDialogOpen(true)}>
               Отследить заказ
             </Button>
           </nav>
 
           {/* Mobile toggle */}
           <button
-            className="md:hidden justify-self-end p-2 text-foreground"
+            className="ml-auto justify-self-end p-2 text-foreground lg:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Меню"
           >
@@ -321,7 +370,7 @@ const Index = () => {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <nav className="md:hidden border-t border-border bg-background px-4 pb-4 flex flex-col gap-3">
+          <nav className="absolute right-4 top-full z-50 flex w-max max-w-[calc(100vw-2rem)] flex-col items-center gap-3 border border-border bg-background px-4 py-4 shadow-lg sm:right-6 lg:hidden">
             {navLinks.map((l) => (
               <button
                 key={l.href}
@@ -342,18 +391,23 @@ const Index = () => {
             >
               Отследить заказ
             </Button>
-            <Button size="sm" className="w-full" onClick={() => scrollTo("#contact")}>
-              Заказать доставку
-            </Button>
           </nav>
         )}
       </header>
 
       {/* ===== HERO ===== */}
       <section
-        className="relative mt-16 pt-4 pb-24 md:min-h-[calc(100svh-4rem)] md:py-8 md:flex md:items-center px-4 overflow-hidden bg-cover bg-top bg-no-repeat"
-        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/hero-background.png)` }}
+        ref={heroSectionRef}
+        className="relative mt-16 pt-4 pb-24 md:min-h-[calc(100svh-4rem)] md:py-8 md:flex md:items-center px-4 overflow-hidden"
       >
+        <div
+          aria-hidden="true"
+          className="hero-background pointer-events-none absolute inset-0 bg-cover bg-top bg-no-repeat"
+        style={{
+          "--hero-background-ultrawide": `url(${import.meta.env.BASE_URL}images/hero-background.png)`,
+          ...heroBackgroundStyle,
+        } as React.CSSProperties}
+        />
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 h-[180px]"
@@ -390,7 +444,7 @@ const Index = () => {
                 className="text-base text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
                 onClick={() => scrollTo("#game-preview")}
               >
-                ... или попробуйте доставить заказ сами →
+                ... или доставить самостоятельно →
               </button>
             </div>
           </ScrollReveal>
@@ -467,9 +521,11 @@ const Index = () => {
 
           <ScrollReveal delay={1} className="mt-0">
             <div
-              className="relative mx-auto min-h-[280px] max-w-5xl overflow-hidden rounded-2xl bg-center bg-no-repeat max-sm:bg-[length:100%_auto] sm:bg-cover sm:min-h-[340px]"
+              className="relative mx-auto min-h-[280px] max-w-5xl overflow-hidden rounded-2xl bg-center bg-no-repeat before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-10 before:bg-gradient-to-r before:from-[#fafbfc] before:to-transparent before:content-[''] after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:z-10 after:w-10 after:bg-gradient-to-l after:from-[#fafbfc] after:to-transparent after:content-[''] max-sm:bg-[length:100%_auto] sm:bg-cover sm:min-h-[340px]"
               style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/background-game1.png)` }}
             >
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-[#fafbfc] to-transparent" />
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-[#fafbfc] to-transparent" />
               {/* Явная «коробка» под дрон: иначе flex-1 схлопывается по высоте картинки и justify-end не работает */}
               <div className="absolute inset-x-6 bottom-8 top-12 flex items-end justify-center sm:inset-x-10 sm:bottom-10 sm:top-14">
                 <img
@@ -484,7 +540,7 @@ const Index = () => {
             <div className="mt-0 flex justify-center">
               <Button
                 size="lg"
-                className="min-w-36 bg-accent/10 text-base font-medium text-accent hover:bg-accent hover:text-accent-foreground hover:brightness-100"
+                className="min-w-36 bg-accent/10 text-base font-medium text-[#ff7a00] hover:bg-accent hover:text-accent-foreground hover:brightness-100"
                 onClick={handleOpenGamePreview}
               >
                 Играть
@@ -505,9 +561,9 @@ const Index = () => {
           </ScrollReveal>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {reviews.map((r, i) => (
-              <ScrollReveal key={r.name} delay={(i % 4) as 0 | 1 | 2 | 3}>
+              <ScrollReveal key={r.name} delay={(i % 4) as 0 | 1 | 2 | 3} className="h-full">
                 <Card className="border-none shadow-md bg-card h-full">
-                  <CardContent className="p-6 flex flex-col gap-4">
+                  <CardContent className="p-6 flex h-full flex-col gap-4">
                     <div className="flex gap-0.5">
                       {Array.from({ length: 5 }).map((_, j) => (
                         <Star
